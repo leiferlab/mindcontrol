@@ -342,6 +342,13 @@ WormAnalysisParam* CreateWormAnalysisParam(){
 	ParamPtr->stageSpeedFactor=25;
 	ParamPtr->stageROIRadius=250;
 	ParamPtr->stageTargetSegment=10;
+	
+	/** Software Aperture Field-Of-View **/
+	ParamPtr->ApertureOn=0; // by default, turn off the software aperture
+	ParamPtr->ApertureX=1024/2; // x coordinate of center of circle
+	ParamPtr->ApertureY=768/2; // y coordinate of center of circle
+	ParamPtr->ApertureR=768/2; // radius of circle
+	
 
 	/**Record Parameters **/
 	ParamPtr->Record=0;
@@ -543,11 +550,49 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	 *  c) resize
 	 *  d) not using CV_GAUSSIAN for smoothing
 	 */
+	
+	
+	// TO BE IMPLEMENTED:  7/21/2014
+	/** If we have turned on software-defined aperture **/
+		/** make a temporary image that is all black **/
+		/** draw a filled in white circle **/
+		/** do XOR **/
+	/** else copy over the original image **/	
+
+
+
+	/** Crop the Image based on the user defined aperture **/
+	IplImage* OrigCropped=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
+	
+	if Params->ApertureOn{
+		
+		/** draw a filled in circle for a mask **/
+		IplImage* CircleROI=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
+		cvZero(CircleROI);
+		cvCircle(CircleROI,cvPoint(Params->ApertureX,Params->ApertureY),Params->ApertureR,cvScalar(255,255,255),-1,CV_AA,0);		
+		
+		/** do a bitwise AND **/
+		cvAnd(CircleROI, Worm->ImgOrig, OrigCropped);
+	
+		/** The Circle Mask is no longer necessary **/
+		cvReleaseImage(&CircleROI);
+	} else {  
+		/* If no cropping is necessary, just copy over the original */
+		cvCopy(Worm->ImgOrig,OrigCropped);
+	}
+
+
 
 	/** Smooth the Image **/
 	TICTOC::timer().tic("cvSmooth");
-	cvSmooth(Worm->ImgOrig,Worm->ImgSmooth,CV_GAUSSIAN,Params->GaussSize*2+1);
+	cvSmooth(OrigCropped),Worm->ImgSmooth,CV_GAUSSIAN,Params->GaussSize*2+1);
 	TICTOC::timer().toc("cvSmooth");
+	
+	/**The cropped original is no longer needed */
+	cvReleaseImage(&OrigCropped);
+	
+
+
 
 	/** Dilate and Erode **/
 //	cvDilate(Worm->ImgSmooth, Worm->ImgSmooth,NULL,3);
@@ -1132,6 +1177,15 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 					// SEE http://stackoverflow.com/questions/1335230/is-the-memory-of-a-character-array-freed-by-going-out-of-scope
 	sprintf(frame,"%d",Worm->frameNum);
 	cvPutText(TempImage,frame,cvPoint(Worm->SizeOfImage.width- 200,Worm->SizeOfImage.height - 10),&font,cvScalar(255,255,255) );
+	
+	
+	/** Display the Field of View Circle indicator **/
+	if (Params->ApertureOn){ 
+		/* If we are restricing the field of view in software... */
+		/* Draw the circle as a white line  */
+		cvCircle(TempImage,cvPoint(Params->ApertureX,Params->ApertureY),Params->ApertureR,cvScalar(255,255,255),1,CV_AA,0);
+		}
+	
 	return 0;
 }
 

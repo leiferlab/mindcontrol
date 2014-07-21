@@ -882,6 +882,25 @@ void SetupGUI(Experiment* exp) {
 	//Use the minimum DLP On and Refractory Period?
 	cvCreateTrackbar("StayOn&Refract", exp->WinCon2,
 					&(exp->Params->StayOnAndRefract), 1, (int) NULL);
+					
+	
+	/** Software Defined Circle Aperture **/
+	
+	/* Turn aperture on or off */
+	cvCreateTrackbar("ApertureOn", exp->WinCon2,
+					 &(exp->Params->ApertureOn), 1, (int) NULL);
+	
+	/* Set aperture X position */
+	cvCreateTrackbar("ApertureX", exp->WinCon2,
+					 &(exp->Params->ApertureX), WormPtr->SizeOfImage.width , (int) NULL);
+					 
+ 	/* Set aperture X position */
+ 	cvCreateTrackbar("ApertureY", exp->WinCon2,
+ 					 &(exp->Params->ApertureY), WormPtr->SizeOfImage.height , (int) NULL);
+					 				
+  	/* Set aperture X position */
+  	cvCreateTrackbar("ApertureR", exp->WinCon2,
+  					 &(exp->Params->ApertureR), WormPtr->SizeOfImage.width / 2 , (int) NULL);
 
 
 

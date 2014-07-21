@@ -149,6 +149,13 @@ typedef struct WormAnalysisParamStruct{
 	int stageROIRadius;   // radius of the active zone
 	int stageTargetSegment; //segment along the worms centerline used for targeting
 
+	/** Software Aperture Field-Of-View **/
+	int ApertureOn; // by default, turn off the software aperture
+	int ApertureX; // x coordinate of center of circle
+	int ApertureY; // y coordinate of center of circle
+	int ApertureR; // radius of circle
+	
+
 	/** Record Data Parameters **/
 	int Record;
 
