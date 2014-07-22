@@ -61,7 +61,6 @@
 /************************************************************/
 /* Creating, Destroying and Memory for 						*/
 /*  WormAnalysisDataStruct 									*/
-/*															*/
 /************************************************************/
 
 
@@ -564,7 +563,7 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	/** Crop the Image based on the user defined aperture **/
 	IplImage* OrigCropped=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
 	
-	if Params->ApertureOn{
+	if (Params->ApertureOn) {
 		
 		/** draw a filled in circle for a mask **/
 		IplImage* CircleROI=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
@@ -585,7 +584,7 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 
 	/** Smooth the Image **/
 	TICTOC::timer().tic("cvSmooth");
-	cvSmooth(OrigCropped),Worm->ImgSmooth,CV_GAUSSIAN,Params->GaussSize*2+1);
+	cvSmooth(OrigCropped,Worm->ImgSmooth,CV_GAUSSIAN,Params->GaussSize*2+1);
 	TICTOC::timer().toc("cvSmooth");
 	
 	/**The cropped original is no longer needed */

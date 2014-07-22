@@ -895,15 +895,15 @@ void SetupGUI(Experiment* exp) {
 	
 	/* Set aperture X position */
 	cvCreateTrackbar("ApertureX", exp->WinCon2,
-					 &(exp->Params->ApertureX), WormPtr->SizeOfImage.width , (int) NULL);
+					 &(exp->Params->ApertureX), exp->Worm->SizeOfImage.width , (int) NULL);
 					 
  	/* Set aperture X position */
  	cvCreateTrackbar("ApertureY", exp->WinCon2,
- 					 &(exp->Params->ApertureY), WormPtr->SizeOfImage.height , (int) NULL);
+ 					 &(exp->Params->ApertureY), exp->Worm->SizeOfImage.height , (int) NULL);
 					 				
   	/* Set aperture X position */
   	cvCreateTrackbar("ApertureR", exp->WinCon2,
-  					 &(exp->Params->ApertureR), WormPtr->SizeOfImage.width / 2 , (int) NULL);
+  					 &(exp->Params->ApertureR), exp->Worm->SizeOfImage.width / 2 , (int) NULL);
 
 
 
