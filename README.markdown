@@ -98,10 +98,10 @@ Andrew Leifer is happy, however, to answer any questions about the code itself o
 Step by step install for Windows 7 64 Bit
 =========================================
 
-* Install Bitflow SDK (Camera API)
+* Install Bitflow SDK (Camera API) v. 5.60
 * Install Karbon Bitflow Frame Grabber Board
 * Hook up Camera via Cameralink
-* Install Vialux & ALP Basic (DMD API)
+* Install Vialux & ALP Basic (DMD API) ALP Basic 4.1
 * Hook up DMD via USB
 * Install git http://git-scm.com/downloads  (note 1.8.5 has a bug w/ https, so use 1.8.4 for now)
 * Install this git repo and the submodules it depends upon
@@ -115,7 +115,7 @@ Step by step install for Windows 7 64 Bit
 * Prepare to Compile openCV by running `cmake`
     * Point cmake to opencv's source directory: `C:/opencv/sources`
     * Create a folder for the compiled opencv libraries: `C:/opencv/build_mingw64`
-    * Configure cmake as "unix makefile" and point it to the toolchain file template included in this repo: `mingw-w64-toolchain.cmake`  note you may have to adjust the file paths
+    * Configure cmake as "unix makefile" or "MinGW Makefile" whichever works and point it to the toolchain file template included in this repo: `mingw-w64-toolchain.cmake`  note you may have to adjust the file paths
     * I had to manually add in some parameters for `cmake` to work, even if they were also included in the tool chain, specifically: 
         * `CMAKE_LINKER C:/mingw64/x86_64-w64-mingw32/bin/ld.exe`
         * `CMAKE_MAKE_PROGRAM C:/mingw64/bin/mingw32-make.exe` 
@@ -129,6 +129,7 @@ Step by step install for Windows 7 64 Bit
     * `cd` into `/c/opencv/build_mingw64`
     * run `/c/mingw64/bin/mingw32-make.exe install`   (if you are rerunning, be sure to `make clean` first)
     * At the end of a successful compilation, `C:\opencv\build_mingw64\lib\` should be full of `*.a` files. and `C:\opencv\build_mingw64\bin\` should be full of sample programs that actually run  when invoked from a `cmd` Windows command line environment. 
+    * Add `C:\opencv\build_mingw64\bin\` to the system path environment variables
 * Adjust the mindcontrol software `makefile` in preparation of compiling the mindcontrol software. Sometimes, for example opencv changes the location of different header folders or modules and this needs to be updated. Also check that the locations of `git` is the same as this gets called during compilation.
 
 * Compile the mindcontrol software

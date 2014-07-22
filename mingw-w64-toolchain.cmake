@@ -1,6 +1,7 @@
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_RC_COMPILER C:/mingw64/bin/windres.exe)
 set(CMAKE_AR C:/mingw64/bin/ar.exe)
+set(CMAKE_LINKER C:/mingw64/x86_64-w64-mingw32/bin/ld.exe)
 set(CMAKE_MAKE_PROGRAM C:/mingw64/bin/mingw32-make.exe)
 #set(_CMAKE_TOOLCHAIN_PREFIX x86_64-w64-mingw32-)
 set(CMAKE_C_COMPILER C:/mingw64/bin/x86_64-w64-mingw32-gcc.exe)
