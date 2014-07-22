@@ -31,11 +31,11 @@
 
 
 //OpenCV Headers
-//#include <cxcore.h>
+#include <cxcore.h>
 #include "opencv2/highgui/highgui_c.h"
-#include "opencv/cv.h"
-#include "opencv/cxcore.h"
-//#include <cv.h>
+//#include "opencv/cv.h"
+//#include "opencv/cxcore.h"
+#include <cv.h>
 
 //Timer Lib
 #include "../3rdPartyLibs/tictoc.h"
