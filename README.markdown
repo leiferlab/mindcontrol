@@ -1,6 +1,11 @@
 Welcome to MindControl
 ======================
 
+Branches
+========
+
+For a description of different branches, see the following Gist: https://gist.github.com/aleifer/c060861504d462031600
+
 Introduction
 ------------
 
