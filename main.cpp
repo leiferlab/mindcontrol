@@ -398,7 +398,7 @@ int main (int argc, char** argv){
 
 
 /**
- * Thread to display image. 
+ * Thread to display image & control stage feedback
  */
 UINT Thread(LPVOID lpdwParam) {
 	Experiment* exp= (Experiment*) lpdwParam;
@@ -507,6 +507,8 @@ UINT Thread(LPVOID lpdwParam) {
 					/** Do the Stage Tracking **/
 					TICTOC::timer().tic("HandleStageTracker()");
 					HandleStageTracker(exp);
+					 TICTOC::timer().toc("TimeBetStageUpdate()");
+					 TICTOC::timer().tic("TimeBetStageUpdate()");
 					TICTOC::timer().toc("HandleStageTracker()");
 				
 				}

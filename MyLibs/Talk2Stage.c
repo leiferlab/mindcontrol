@@ -103,7 +103,7 @@ HANDLE InitializeUsbStage(){
 
 		/** Open the Serial Port **/
 		HANDLE hSerial;
-		hSerial = CreateFile("COM3", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+		hSerial = CreateFile("COM4", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 		if(hSerial==INVALID_HANDLE_VALUE){
 			if(GetLastError()==ERROR_FILE_NOT_FOUND){
 				//serial port does not exist.
@@ -201,7 +201,7 @@ int spinStage(HANDLE s, int xspeed,int yspeed){
 
 
 	char* buff=(char*) malloc(sizeof(char)*1024);
-	sprintf(buff,"SPIN X=%d Y=%d\r",xspeed,yspeed);
+	sprintf(buff,"SPIN X=%d Y=%d\r",xspeed,-yspeed);
 	bErrorFlag=WriteFile(s, buff, strlen(buff), &Length, NULL);
 	free(buff);
 
