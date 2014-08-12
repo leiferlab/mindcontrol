@@ -229,7 +229,7 @@ int PrepareFrameGrabberForAcquire(FrameGrabber* fg){
 
 		// Set the timout to be very short
 		printf("Setting acquisition timeout time.\n");
-		setAcquisitionTimeout(fg, 10); //in Aravis lab this was 4
+		setAcquisitionTimeout(fg, 100); //in Aravis lab this was 4
 
 
 		printf("Prepare frame grabber for acquire completed.");
