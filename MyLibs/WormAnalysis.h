@@ -83,6 +83,9 @@ typedef struct WormAnalysisParamStruct{
 	/** Defaul Wormspace GridSize for illumination **/
 	CvSize DefaultGridSize;
 
+	/** Fluorescence Imaging Properties **/
+	int FluorMode; //Are we in fluorescence mode.?
+	
 	/** Illumination Parameters **/
 	int IllumSegCenter; // Deprecated
 	int IllumSegRadius; // Deprecated
@@ -191,6 +194,18 @@ typedef struct WormTimeEvolutionStruct{
 }WormTimeEvolution;
 
 
+/* 
+ * Struct to hold the fluorescence centroid 
+ * and the moments of the blobs above threshold
+ * These are Fluorescent Features
+ * This is only used when the experiment is in Fluroescence Mode
+ *
+ */
+typedef struct WormFluorStruct{
+	CvPoint centroid;
+	CvMoments moments;
+}WormFluor;
+
 
 /** This is the image and the extracted data related to a worm at a single frame in time **/
 typedef struct WormImageAnalysisStruct{
@@ -217,6 +232,9 @@ typedef struct WormImageAnalysisStruct{
 	int HeadIndex;
 	CvSeq* Centerline;
 
+	/** Flluorescence Features **/
+	WormFluor* FluorFeatures;
+	
 	/** TimeStamp **/
 	unsigned long timestamp;
 
@@ -229,9 +247,9 @@ typedef struct WormImageAnalysisStruct{
 	/** Information about location on plate **/
 	CvPoint stageVelocity; //compensating velocity of stage.
 
-
 	//WormIlluminationData* Illum;
 }WormAnalysisData;
+
 
 
 
@@ -253,6 +271,7 @@ typedef struct WormGeomStruct{
 	CvPoint Tail;
 	int Perimeter;
 }WormGeom;
+
 
 
 /*

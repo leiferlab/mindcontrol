@@ -91,6 +91,9 @@ Experiment* CreateExperimentStruct() {
 	/** Simulation? True/False **/
 	exp->SimDLP = 0;
 	exp->VidFromFile = 0;
+	
+	/** Fluorescence Mode **/
+	exp->FluorMode = 0;
 
 	/** GuiWindowNames **/
 	exp->WinDisp = NULL;
@@ -231,6 +234,7 @@ void displayHelp() {
 	printf("\t-y\n\ty 384\t Target y position of worm for stage feedback loop. 0 is top.\n\n");
 	printf(
 			"\t-p  protocol.yml\n\t\tIlluminate according to a YAML protocol file.\n\n");
+	printf("\t-f\n\tOperate in fluorescence mode. Expects fluorescing blobs instead of darkfield image.. Disables worm shape tracking and disables DLP. Tracks centroid of brightest blob.")
 	printf("\t-?\n\t\tDisplay this help.\n\n");
 	printf("\nSee shortcutkeys.txt for a list of keyboard shortcuts.\n");
 }
@@ -317,7 +321,15 @@ int HandleCommandLineArguments(Experiment* exp) {
 				}
 				printf("Stage feedback target y= %d pixels.\n",exp->stageFeedbackTarget.y );
 		break;
-
+		
+		case 'f': /** fluorescence mode... expect fluorescence neurons, not darkfield image **/
+				exp->FluorMode=1;
+				
+				/** For now fluorescence mode will preclude the use of the DLP **/
+				epx->SimDLP=1;	
+				printf("Entering fluorescence mode...\n The software will now expect fluorescence images of neurons instead of darkfield images.\n");
+				printf("Also, disabling DLP functionality.")
+		break;
 
 		case '?':
 			if (optopt == '?') {
@@ -1144,6 +1156,9 @@ void InitializeExperiment(Experiment* exp) {
 
 	exp->Worm = Worm;
 	exp->Params = Params;
+	if (exp->FluorMode)
+		exp->Params->FluorMode=1;
+
 
 	/** Setup Previous Worm **/
 	WormGeom* PrevWorm = CreateWormGeom();
@@ -1481,17 +1496,27 @@ void DoSegmentation(Experiment* exp) {
 	 *  Blob Detection
 	 *  etc
 	 */
+		
+		
+
+		
 	TICTOC::timer().tic("_FindWormBoundary",exp->e);
 	if (!(exp->e))
 		FindWormBoundary(exp->Worm, exp->Params);
 	TICTOC::timer().toc("_FindWormBoundary",exp->e);
 
+	/** If we are in fluorescence mode  **/
+	if (exp->FluorMode){
+		// We are done.. Nothing More to do..  
+		return; 
+	}	
+
 	/*** Find Worm Head and Tail ***/
-	if (!(exp->e))
+	if (!(exp->e) )
 		exp->e = GivenBoundaryFindWormHeadTail(exp->Worm, exp->Params);
 
 	/** If we are doing temporal analysis, improve the WormHeadTail estimate based on prev frame **/
-	if (exp->Params->TemporalOn && !(exp->e)){
+	if (exp->Params->TemporalOn && !(exp->e) ){
 		PrevFrameImproveWormHeadTail(exp->Worm, exp->Params, exp->PrevWorm);
 	}
 
@@ -2015,13 +2040,26 @@ int HandleStageTracker(Experiment* exp){
 				printf("Setting flags to turn stage off in HandleStageTracker()\n");
 			} else {
 			/** Move the stage to keep the worm centered in the field of view **/
-			printf(".");
-
-			/** Get the Point on the worm some distance along the centerline **/
-			CvPoint* PtOnWorm= (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
 			
+			
+			/** Find The Point on the Worm To Center **/
+			CvPoint* PtOnWorm;
+			
+							
+			if (exp->Params->FluorMode != 0){
+					
+				/** Get the Point on the worm some distance along the centerline **/
+				PotOnWorm = (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
+			
+			}else{
+				/** Track based on the centroid of the binary image **/
+				PtOnWorm = exp->Params->FluorFeatures->Centroid;
+			}
+
 			/** Adjust the stage velocity to keep that point centered in the field of view **/
 			exp->Worm->stageVelocity=AdjustStageToKeepObjectAtTarget(exp->stage,PtOnWorm,exp->stageFeedbackTarget,exp->Params->stageSpeedFactor, exp->Params->stageROIRadius);
+
+			printf("."); // ANDY: Consider removing this if it takes time.. 
 			}
 		}
 		if (exp->Params->stageTrackingOn==0){/** Tracking Should be off **/

@@ -107,7 +107,7 @@ WormAnalysisData* CreateWormAnalysisDataStruct(){
 	WormPtr->Boundary=cvCreateSeq(CV_SEQ_ELTYPE_POINT,sizeof(CvSeq),sizeof(CvPoint),WormPtr->MemStorage);
 	WormPtr->Centerline=cvCreateSeq(CV_SEQ_ELTYPE_POINT,sizeof(CvSeq),sizeof(CvPoint),WormPtr->MemStorage);
 
-
+	WormPtr->FluorFeatures = CreateWormFluor();	
 
 	/*** Create Segmented Worm Object ***/
 	WormPtr->Segmented= CreateSegmentedWormStruct();
@@ -136,6 +136,7 @@ void DestroyWormAnalysisDataStruct(WormAnalysisData* Worm){
 	cvReleaseMemStorage(&((Worm)->MemScratchStorage));
 	cvReleaseMemStorage(&((Worm)->MemStorage));
 	free((Worm)->Segmented);
+	free( Worm->FluorFeatures);
 	DestroyWormTimeEvolution(&(Worm->TimeEvolution));
 	free(Worm);
 	Worm=NULL;
@@ -267,6 +268,9 @@ WormAnalysisParam* CreateWormAnalysisParam(){
 
 	/** Default WormSpace GridSize **/
 	ParamPtr->DefaultGridSize=cvSize(20,ParamPtr->NumSegments);
+	
+	/** Fluorescence Mode **/
+	ParamPtr->FluorMode=0;
 
 	/** Frame-to-Frame Temporal Analysis Parameters **/
 	ParamPtr->TemporalOn=1;
@@ -523,6 +527,36 @@ int AddMeanHeadCurvature(WormTimeEvolution* TimeEvolution, double CurrHeadCurvat
 
 
 
+/************************************************************/
+/* Creating and Destroying WormFluor Structure				*/
+/*  					 									*/
+/*															*/
+/************************************************************/
+
+/*
+ * Creates and allocates memory for a WormFluor Structure
+ * (which contains information about the worm when we are in fluorescence mode) 
+ */
+WormFluor* CreateWormFluor(){
+	WormFluor* Fluor;
+	Flour= (WormFluor*) malloc(sizeof(WormFluor));
+
+	Fluor->Centroid=(CvPoint*) malloc (sizeof(CvPoint));
+	Fluor->Moments =(CvMoments*) malloc(sizeof(CvMoments));
+		
+	return Fluor;
+}
+
+int DestroyWormFluor(WormFluor* Fluor){
+	free((Fluor->Centroid));
+	free((Fluor->Moments));
+	free(Flour);
+	Flour=NULL;
+}
+
+
+
+
 
 /************************************************************/
 /* Higher Level Routines									*/
@@ -544,21 +578,12 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	/** This function currently takes around 5-7 ms **/
 	/**
 	 * Before I forget.. plan to make this faster by:
-	 *  a) using region of interest
+	 *  a) using region of interest... DONE!
 	 *  b) decimating to make it smaller (maybe?)
 	 *  c) resize
 	 *  d) not using CV_GAUSSIAN for smoothing
 	 */
 	
-	
-	// TO BE IMPLEMENTED:  7/21/2014
-	/** If we have turned on software-defined aperture **/
-		/** make a temporary image that is all black **/
-		/** draw a filled in white circle **/
-		/** do XOR **/
-	/** else copy over the original image **/	
-
-
 
 	/** Crop the Image based on the user defined aperture **/
 	IplImage* OrigCropped=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
@@ -611,6 +636,47 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 		cvErode(Worm->ImgThresh, Worm->ImgThresh,NULL,2);
 		TICTOC::timer().toc("DilateAndErode");
 	}
+	
+	
+	/** If we are in fluorescence mode  **/
+	/** Note a few line from this code block are from Quan Wen **/
+	if (Params->FluorMode){ 
+		
+		/** Check to see if there are any pixels above threshold **/
+	    CvScalar pixelsum;
+		pixelsum=cvSum(Worm->ImgThresh);
+		if (pixelsum.val[0]==0){
+			printf("Failed to find any fluorescence. Maybe the threshold is too high? \n");
+			return ;
+		}
+		
+		if (Worm->FluorFeaters->Moments==NULL){
+			printf("ERROR! Memory has not been allocated for the moments of the blob in FlourFeatures!\n");
+			return;
+		}
+		
+		/** Find the Fluorescence Blob **/		
+		IplImage* TempImage=cvCreateImage(cvGetSize(Worm->ImgThresh),IPL_DEPTH_8U,1);
+		cvCopy(Worm->ImgThresh,TempImage);
+		
+    	TICTOC::timer().tic("cvMoments");
+        cvMoments(TempImage,Worm->FluorFeatures->Moments,1);
+    	TICTOC::timer().toc("cvMoments");
+		
+		if (Worm->FLuorFeatures->Centroid != NULL) {
+			/** Calculate the centroid by performing this calculation on the moments **/
+			*(Worm->Fluor->Centroid)=cvPoint(Worm->Fluor->mom->m10/Worm->Fluor->mom->m00,Worm->Fluor->mom->m01/Worm->Fluor->mom->m00);
+		} else {
+			printfo("ERROR! Memory has not been allocated for the centroid point in FluorFeatures!\n");
+		}
+			
+		
+			
+		/** If we are in fluroescence mode, we are now done! **/
+		return;
+	}
+	
+	
 
 
 	/** Find Contours **/
@@ -1124,41 +1190,37 @@ int SegmentWorm(WormAnalysisData* Worm, WormAnalysisParam* Params){
 int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisParam* Params, Frame* IlluminationFrame){
 
 	int CircleDiameterSize=10;
+	
+	if (!(Params->FluorMode)){
+		
+		/** Overly a translucent image of the illumination pattern**/
+		double weighting=0.20; //Alpha blend weighting
+		if (Params->DLPOn) weighting=0.45; // if DLP is on make the illumination pattern more opaque
+		cvAddWeighted(Worm->ImgOrig,1,IlluminationFrame->iplimg,weighting,0,TempImage);
 
-	/** Overly a translucent image of the illumination pattern**/
+		DrawSequence(&TempImage,Worm->Boundary);
 
-	double weighting=0.20; //Alpha blend weighting
-	if (Params->DLPOn) weighting=0.45; // if DLP is on make the illumination pattern more opaque
-	cvAddWeighted(Worm->ImgOrig,1,IlluminationFrame->iplimg,weighting,0,TempImage);
-
-	//Want to also display boundary!
-	//cvDrawContours(TempImage, Worm->Boundary, cvScalar(255,0,0),cvScalar(0,255,0),100);
-
-	DrawSequence(&TempImage,Worm->Boundary);
-
-//	DrawSequence(&TempImage,Worm->Segmented->LeftBound);
-//	DrawSequence(&TempImage,Worm->Segmented->RightBound);
-
-	cvCircle(TempImage,*(Worm->Tail),CircleDiameterSize,cvScalar(255,255,255),1,CV_AA,0);
-	cvCircle(TempImage,*(Worm->Head),CircleDiameterSize/2,cvScalar(255,255,255),1,CV_AA,0);
+		cvCircle(TempImage,*(Worm->Tail),CircleDiameterSize,cvScalar(255,255,255),1,CV_AA,0);
+		cvCircle(TempImage,*(Worm->Head),CircleDiameterSize/2,cvScalar(255,255,255),1,CV_AA,0);
+	
+	} else {
+		/** Draw A Circle on the centroid of the fluorescent blob **/ 
+		if (Worm->FluorFeatures!=NULL) {
+				cvCircle(TempImage,*(Worm->FluorFeatures->Centroid),CircleDiameterSize*2,cvScalar(255,255,255),1,CV_AA,0)
+		}
+	}
 
 	/** Prepare Text **/
 	CvFont font;
 	cvInitFont(&font,CV_FONT_HERSHEY_TRIPLEX ,1.0,1.0,0,2,CV_AA);
 
+
 	/** Display DLP On Off **/
 	if (Params->DLPOn) {
 		cvPutText(TempImage,"DLP ON",cvPoint(20,70),&font,cvScalar(255,255,255));
 	}
-	/** Display Recording if we are recording **/
-	if (Params->Record){
-		cvPutText(TempImage,"Recording",cvPoint(20,100),&font,cvScalar(255,255,255));
-
-	} else {
-		if (Params->DLPOn) cvPutText(TempImage,"Did you forget to record?",cvPoint(20,100),&font,cvScalar(255,255,255));
-	}
-
-
+	
+	
 	/*** Let the user know if the illumination flood light is on ***/
 	if (Params->IllumFloodEverything){
 		cvPutText(TempImage,"Floodlight",cvPoint(20,130),&font,cvScalar(255,255,255));
@@ -1171,6 +1233,15 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 		cvPutText(TempImage,protoNum,cvPoint(20,160),&font,cvScalar(255,255,255));
 
 	}
+
+	/** Display Recording if we are recording **/
+	if (Params->Record){
+		cvPutText(TempImage,"Recording",cvPoint(20,100),&font,cvScalar(255,255,255));
+
+	} else {
+		if (Params->DLPOn) cvPutText(TempImage,"Did you forget to record?",cvPoint(20,100),&font,cvScalar(255,255,255));
+	}
+	
 
 	char frame[30]; // these are freed automatically 
 					// SEE http://stackoverflow.com/questions/1335230/is-the-memory-of-a-character-array-freed-by-going-out-of-scope

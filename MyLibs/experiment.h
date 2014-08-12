@@ -80,6 +80,10 @@ typedef struct ExperimentStruct{
 	int SimDLP; //1= simulate the DLP, 0= real DLP
 	int VidFromFile; // 1 =Video from File, 0=Video From Camera
 
+	/** Fluorescence Mode **/
+	int FluorMode; //0 == expect darkfield, 1== expect fluorescence image
+	
+	
 	/** GuiWindowNames **/
 	char* WinDisp ;
 	char* WinCon1;
