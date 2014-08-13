@@ -1992,7 +1992,7 @@ CvPoint AdjustStageToKeepObjectAtTarget(HANDLE stage, CvPoint* obj,CvPoint targe
 	vel.y= CropNumber(-activeZoneRadius,activeZoneRadius, diff.y)*speed;
 
 	//printf("SpinStage: vel.x=%d, vel.y=%d\n",vel.x,vel.y);
-	spinStage(stage,vel.x,vel.y);
+	spinStage(stage,vel.y,vel.x); //swapped values here to accomodate weird camera angle relative to stage
 
 	return vel;
 
