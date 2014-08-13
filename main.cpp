@@ -122,6 +122,8 @@ int main (int argc, char** argv){
 	/** Deal with CommandLineArguments **/
 	LoadCommandLineArguments(exp,argc,argv);
 	if (HandleCommandLineArguments(exp)==-1) return -1;
+	
+	printf("After loading command line arguments exp->Params->FluorMode=%d\n",exp->Params->FluorMode);
 
 	/** Read In Calibration Data ***/
 	if (HandleCalibrationData(exp)<0) return -1;
@@ -235,79 +237,96 @@ int main (int argc, char** argv){
 			/** Do Segmentation **/
 			DoSegmentation(exp);
 			TICTOC::timer().toc("EntireSegmentation");
-
-
-
-			/** Real-Time Curvature Phase Analysis, and phase induced illumination **/
-		    HandleCurvaturePhaseAnalysis(exp);
-
-			/** If the DLP is not displaying right now, than turn off the mirrors */
-			ClearDLPifNotDisplayingNow(exp);
-
-
-			/* Transform the segmented worm coordinates into DLP space */
-			/* Note that this is much more computationally efficient than to transform the original image 
-			or to transform the resulting illumination pattern                                           */ 
 			
-			TICTOC::timer().tic("TransformSegWormCam2DLP");
-			if (exp->e == 0){
-				TransformSegWormCam2DLP(exp->Worm->Segmented, exp->segWormDLP,exp->Calib);
-			}
-			TICTOC::timer().toc("TransformSegWormCam2DLP");
+			printf("Segmentation done!\n");
+			
+			
+			/** If we are not in fluorescence mode **/
+			/** Do targeting, and DLP stuff and worm boundary stuff **/
+			if (!(exp->FluorMode)){
+				/** Real-Time Curvature Phase Analysis, and phase induced illumination **/
+				HandleCurvaturePhaseAnalysis(exp);
 
-			/** Handle the Choise of Illumination Protocol Here**/
-			/** ANDY: write this here **/
-			 HandleTimedSecondaryProtocolStep(exp->p,exp->Params);
+				/** If the DLP is not displaying right now, than turn off the mirrors */
+				ClearDLPifNotDisplayingNow(exp);
 
 
-			/*** Do Some Illumination ***/
-			if (exp->e == 0) {
-				/** Clear the illumination pattern **/
-				SetFrame(exp->forDLP,0);
-				SetFrame(exp->IlluminationFrame,0);
+				/* Transform the segmented worm coordinates into DLP space */
+				/* Note that this is much more computationally efficient than to transform the original image 
+				or to transform the resulting illumination pattern                                           */ 
+				
+				TICTOC::timer().tic("TransformSegWormCam2DLP");
+				if ((exp->e == 0)&& !(exp->FluorMode)){
+					TransformSegWormCam2DLP(exp->Worm->Segmented, exp->segWormDLP,exp->Calib);
+				}
+				TICTOC::timer().toc("TransformSegWormCam2DLP");
 
-				if (exp->Params->IllumFloodEverything) {
-					SetFrame(exp->IlluminationFrame,128); // Turn all of the pixels on
-					SetFrame(exp->forDLP,128); // Turn all of the pixels o
+				/** Handle the Choise of Illumination Protocol Here**/
+				/** ANDY: write this here **/
+				if (exp->e == 0){
+					HandleTimedSecondaryProtocolStep(exp->p,exp->Params);
+				}
+			
 
-				} else {
 
-					if (!(exp->Params->ProtocolUse)) /** if not running the protocol **/{
-						/** Otherwise Actually illuminate the  region of the worm your interested in **/
+				/*** Do Some Illumination ***/
+				if (exp->e == 0)  {
+					/** Clear the illumination pattern **/
+					SetFrame(exp->forDLP,0);
+					SetFrame(exp->IlluminationFrame,0);
 
-						DoOnTheFlyIllumination(exp);
+					if (exp->Params->IllumFloodEverything) {
+						SetFrame(exp->IlluminationFrame,128); // Turn all of the pixels on
+						SetFrame(exp->forDLP,128); // Turn all of the pixels o
 
-						/** Repeat but for the DLP space for sending to DLP **/
-					} else{
-						TICTOC::timer().tic("IlluminateFromProtocol()");
-						
-						/** Illuminate the worm in DLP space **/
-						IlluminateFromProtocol(exp->segWormDLP,exp->forDLP,exp->p,exp->Params);
-						
-						/** Illuminate The worm in Camera Space **/						
-						IlluminateFromProtocol(exp->Worm->Segmented,exp->IlluminationFrame,exp->p,exp->Params);
+					} else {
 
-						TICTOC::timer().toc("IlluminateFromProtocol()");
+						if (!(exp->Params->ProtocolUse)) /** if not running the protocol **/{
+							/** Otherwise Actually illuminate the  region of the worm your interested in **/
+
+							DoOnTheFlyIllumination(exp);
+
+							/** Repeat but for the DLP space for sending to DLP **/
+						} else{
+							TICTOC::timer().tic("IlluminateFromProtocol()");
+							
+							/** Illuminate the worm in DLP space **/
+							IlluminateFromProtocol(exp->segWormDLP,exp->forDLP,exp->p,exp->Params);
+							
+							/** Illuminate The worm in Camera Space **/						
+							IlluminateFromProtocol(exp->Worm->Segmented,exp->IlluminationFrame,exp->p,exp->Params);
+
+							TICTOC::timer().toc("IlluminateFromProtocol()");
+
+						}
 
 					}
-
+					/** If InvertIllumination is on, then do that now in both cam space and DLP space**/
+					if (exp->Params->IllumInvert) InvertIllumination(exp);
+				} else {
+					printf("Error in exp->e in the mainloop! code line 295\n");
 				}
-				/** If InvertIllumination is on, then do that now in both cam space and DLP space**/
-				if (exp->Params->IllumInvert) InvertIllumination(exp);
+
+
+				TICTOC::timer().tic("SendFrameToDLP");
+				if (exp->e == 0 && exp->Params->DLPOn && !(exp->SimDLP)) T2DLP_SendFrame((unsigned char *) exp->forDLP->binary, exp->myDLP); // Send image to DLP
+				TICTOC::timer().toc("SendFrameToDLP");
 			} else {
-				printf("Error in exp->e in the mainloop! code line 295\n");
+				printf("Skipped darkfield stuff\n");
+					/** Clear the illumination pattern **/
+					SetFrame(exp->forDLP,0);
+					SetFrame(exp->IlluminationFrame,0);
 			}
 
-
-			TICTOC::timer().tic("SendFrameToDLP");
-			if (exp->e == 0 && exp->Params->DLPOn && !(exp->SimDLP)) T2DLP_SendFrame((unsigned char *) exp->forDLP->binary, exp->myDLP); // Send image to DLP
-			TICTOC::timer().toc("SendFrameToDLP");
+			
 		
 
 			/*** DIsplay Some Monitoring Output ***/
 			if (exp->e == 0) CreateWormHUDS(exp->HUDS,exp->Worm,exp->Params,exp->IlluminationFrame);
+			printf("Created wormhuds\n");
 			if (exp->e==0 && exp->stageIsPresent==1) MarkRecenteringTarget(exp);
 
+			printf("monitoring out...\n");
 
 			if (exp->e == 0 &&  EverySoOften(exp->Worm->frameNum,exp->Params->DispRate) ){
 				TICTOC::timer().tic("DisplayOnScreen");
@@ -315,6 +334,8 @@ int main (int argc, char** argv){
 				PrepareSelectedDisplay(exp);
 				TICTOC::timer().toc("DisplayOnScreen");
 			}
+			
+			printf("Display is setup...\n");
 
 
 
@@ -331,6 +352,8 @@ int main (int argc, char** argv){
 				TICTOC::timer().toc("DoWriteToDisk()");
 
 			}
+			
+			printf("API and writing done...\n");
 
 
 			if (exp->e != 0) {

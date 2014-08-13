@@ -234,7 +234,7 @@ void displayHelp() {
 	printf("\t-y\n\ty 384\t Target y position of worm for stage feedback loop. 0 is top.\n\n");
 	printf(
 			"\t-p  protocol.yml\n\t\tIlluminate according to a YAML protocol file.\n\n");
-	printf("\t-f\n\tOperate in fluorescence mode. Expects fluorescing blobs instead of darkfield image.. Disables worm shape tracking and disables DLP. Tracks centroid of brightest blob.");
+	printf("\t-f\n\tOperate in fluorescence mode. Expects fluorescing blobs instead of darkfield image.. Disables worm shape tracking and disables DLP. Tracks centroid of brightest blob.\n\n");
 	printf("\t-?\n\t\tDisplay this help.\n\n");
 	printf("\nSee shortcutkeys.txt for a list of keyboard shortcuts.\n");
 }
@@ -250,7 +250,7 @@ int HandleCommandLineArguments(Experiment* exp) {
 	opterr = 0;
 
 	int c;
-	while ((c = getopt(exp->argc, exp->argv, "si:d:o:p:gtx:y:?")) != -1) {
+	while ((c = getopt(exp->argc, exp->argv, "si:d:o:p:fgtx:y:?")) != -1) {
 		switch (c) {
 		case 'i': /** specify input video file **/
 			exp->VidFromFile = 1;
@@ -324,11 +324,12 @@ int HandleCommandLineArguments(Experiment* exp) {
 		
 		case 'f': /** fluorescence mode... expect fluorescence neurons, not darkfield image **/
 				exp->FluorMode=1;
-				
+				exp->Params->FluorMode=1;
+
 				/** For now fluorescence mode will preclude the use of the DLP **/
 				exp->SimDLP=1;	
 				printf("Entering fluorescence mode...\n The software will now expect fluorescence images of neurons instead of darkfield images.\n");
-				printf("Also, disabling DLP functionality.");
+				printf("Also, disabling DLP functionality.\n");
 		break;
 
 		case '?':

@@ -1190,6 +1190,8 @@ int SegmentWorm(WormAnalysisData* Worm, WormAnalysisParam* Params){
  */
 int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisParam* Params, Frame* IlluminationFrame){
 
+	printf("In createWormHUDS\n");
+	printf("Params->FluorMode=%d\n",Params->FluorMode);
 	int CircleDiameterSize=10;
 	
 	if (!(Params->FluorMode)){
@@ -1205,10 +1207,13 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 		cvCircle(TempImage,*(Worm->Head),CircleDiameterSize/2,cvScalar(255,255,255),1,CV_AA,0);
 	
 	} else {
+		cvCopy(Worm->ImgOrig,TempImage);
+		printf("In CreateWormHUDS in fluoresceence mode!\n");
 		/** Draw A Circle on the centroid of the fluorescent blob **/ 
 		if (Worm->FluorFeatures!=NULL) {
 				cvCircle(TempImage,*(Worm->FluorFeatures->centroid),CircleDiameterSize*2,cvScalar(255,255,255),1,CV_AA,0);
 		}
+		printf("centroid drawn!\n");
 	}
 
 	/** Prepare Text **/
@@ -1249,6 +1254,7 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 	sprintf(frame,"%d",Worm->frameNum);
 	cvPutText(TempImage,frame,cvPoint(Worm->SizeOfImage.width- 200,Worm->SizeOfImage.height - 10),&font,cvScalar(255,255,255) );
 	
+	printf("Frame number displayed!\n");
 	
 	/** Display the Field of View Circle indicator **/
 	if (Params->ApertureOn){ 
