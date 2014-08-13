@@ -237,9 +237,7 @@ int main (int argc, char** argv){
 			/** Do Segmentation **/
 			DoSegmentation(exp);
 			TICTOC::timer().toc("EntireSegmentation");
-			
-			printf("Segmentation done!\n");
-			
+						
 			
 			/** If we are not in fluorescence mode **/
 			/** Do targeting, and DLP stuff and worm boundary stuff **/
@@ -312,7 +310,6 @@ int main (int argc, char** argv){
 				if (exp->e == 0 && exp->Params->DLPOn && !(exp->SimDLP)) T2DLP_SendFrame((unsigned char *) exp->forDLP->binary, exp->myDLP); // Send image to DLP
 				TICTOC::timer().toc("SendFrameToDLP");
 			} else {
-				printf("Skipped darkfield stuff\n");
 					/** Clear the illumination pattern **/
 					SetFrame(exp->forDLP,0);
 					SetFrame(exp->IlluminationFrame,0);
@@ -323,10 +320,8 @@ int main (int argc, char** argv){
 
 			/*** DIsplay Some Monitoring Output ***/
 			if (exp->e == 0) CreateWormHUDS(exp->HUDS,exp->Worm,exp->Params,exp->IlluminationFrame);
-			printf("Created wormhuds\n");
 			if (exp->e==0 && exp->stageIsPresent==1) MarkRecenteringTarget(exp);
 
-			printf("monitoring out...\n");
 
 			if (exp->e == 0 &&  EverySoOften(exp->Worm->frameNum,exp->Params->DispRate) ){
 				TICTOC::timer().tic("DisplayOnScreen");
@@ -335,8 +330,6 @@ int main (int argc, char** argv){
 				TICTOC::timer().toc("DisplayOnScreen");
 			}
 			
-			printf("Display is setup...\n");
-
 
 
 			if (exp->e == 0) {
@@ -353,8 +346,6 @@ int main (int argc, char** argv){
 
 			}
 			
-			printf("API and writing done...\n");
-
 
 			if (exp->e != 0) {
 				printf("\nError in main loop. :(\n");
