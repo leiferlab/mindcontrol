@@ -49,6 +49,7 @@
 //OpenCV Headers
 //#include <cxcore.h>
 #include "opencv2/highgui/highgui_c.h"
+#include "opencv2/imgproc/imgproc_c.h"
 //#include <cv.h>
 
 // Andy's Libraries

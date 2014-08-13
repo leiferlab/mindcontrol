@@ -31,11 +31,12 @@
 
 
 //OpenCV Headers
+
 #include <cxcore.h>
-#include "opencv2/highgui/highgui_c.h"
-//#include "opencv/cv.h"
-//#include "opencv/cxcore.h"
 #include <cv.h>
+#include "opencv2/highgui/highgui_c.h"
+#include "opencv2/imgproc/imgproc_c.h"
+
 
 //Timer Lib
 #include "../3rdPartyLibs/tictoc.h"
@@ -539,19 +540,19 @@ int AddMeanHeadCurvature(WormTimeEvolution* TimeEvolution, double CurrHeadCurvat
  */
 WormFluor* CreateWormFluor(){
 	WormFluor* Fluor;
-	Flour= (WormFluor*) malloc(sizeof(WormFluor));
+	Fluor= (WormFluor*) malloc(sizeof(WormFluor));
 
-	Fluor->Centroid=(CvPoint*) malloc (sizeof(CvPoint));
-	Fluor->Moments =(CvMoments*) malloc(sizeof(CvMoments));
+	Fluor->centroid=(CvPoint*) malloc (sizeof(CvPoint));
+	Fluor->moments =(CvMoments*) malloc(sizeof(CvMoments));
 		
 	return Fluor;
 }
 
 int DestroyWormFluor(WormFluor* Fluor){
-	free((Fluor->Centroid));
-	free((Fluor->Moments));
-	free(Flour);
-	Flour=NULL;
+	free((Fluor->centroid));
+	free((Fluor->moments));
+	free(Fluor);
+	Fluor=NULL;
 }
 
 
@@ -650,8 +651,8 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 			return ;
 		}
 		
-		if (Worm->FluorFeaters->Moments==NULL){
-			printf("ERROR! Memory has not been allocated for the moments of the blob in FlourFeatures!\n");
+		if (Worm->FluorFeatures->moments==NULL){
+			printf("ERROR! Memory has not been allocated for the moments of the blob in FluorFeatures!\n");
 			return;
 		}
 		
@@ -660,14 +661,14 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 		cvCopy(Worm->ImgThresh,TempImage);
 		
     	TICTOC::timer().tic("cvMoments");
-        cvMoments(TempImage,Worm->FluorFeatures->Moments,1);
+        cvMoments(TempImage,Worm->FluorFeatures->moments,1);
     	TICTOC::timer().toc("cvMoments");
 		
-		if (Worm->FLuorFeatures->Centroid != NULL) {
+		if (Worm->FluorFeatures->centroid != NULL) {
 			/** Calculate the centroid by performing this calculation on the moments **/
-			*(Worm->Fluor->Centroid)=cvPoint(Worm->Fluor->mom->m10/Worm->Fluor->mom->m00,Worm->Fluor->mom->m01/Worm->Fluor->mom->m00);
+			*(Worm->FluorFeatures->centroid)=cvPoint(Worm->FluorFeatures->moments->m10/Worm->FluorFeatures->moments->m00,Worm->FluorFeatures->moments->m01/Worm->FluorFeatures->moments->m00);
 		} else {
-			printfo("ERROR! Memory has not been allocated for the centroid point in FluorFeatures!\n");
+			printf("ERROR! Memory has not been allocated for the centroid point in FluorFeatures!\n");
 		}
 			
 		
@@ -1206,7 +1207,7 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 	} else {
 		/** Draw A Circle on the centroid of the fluorescent blob **/ 
 		if (Worm->FluorFeatures!=NULL) {
-				cvCircle(TempImage,*(Worm->FluorFeatures->Centroid),CircleDiameterSize*2,cvScalar(255,255,255),1,CV_AA,0)
+				cvCircle(TempImage,*(Worm->FluorFeatures->centroid),CircleDiameterSize*2,cvScalar(255,255,255),1,CV_AA,0);
 		}
 	}
 

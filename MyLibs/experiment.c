@@ -234,7 +234,7 @@ void displayHelp() {
 	printf("\t-y\n\ty 384\t Target y position of worm for stage feedback loop. 0 is top.\n\n");
 	printf(
 			"\t-p  protocol.yml\n\t\tIlluminate according to a YAML protocol file.\n\n");
-	printf("\t-f\n\tOperate in fluorescence mode. Expects fluorescing blobs instead of darkfield image.. Disables worm shape tracking and disables DLP. Tracks centroid of brightest blob.")
+	printf("\t-f\n\tOperate in fluorescence mode. Expects fluorescing blobs instead of darkfield image.. Disables worm shape tracking and disables DLP. Tracks centroid of brightest blob.");
 	printf("\t-?\n\t\tDisplay this help.\n\n");
 	printf("\nSee shortcutkeys.txt for a list of keyboard shortcuts.\n");
 }
@@ -326,9 +326,9 @@ int HandleCommandLineArguments(Experiment* exp) {
 				exp->FluorMode=1;
 				
 				/** For now fluorescence mode will preclude the use of the DLP **/
-				epx->SimDLP=1;	
+				exp->SimDLP=1;	
 				printf("Entering fluorescence mode...\n The software will now expect fluorescence images of neurons instead of darkfield images.\n");
-				printf("Also, disabling DLP functionality.")
+				printf("Also, disabling DLP functionality.");
 		break;
 
 		case '?':
@@ -2049,11 +2049,11 @@ int HandleStageTracker(Experiment* exp){
 			if (exp->Params->FluorMode != 0){
 					
 				/** Get the Point on the worm some distance along the centerline **/
-				PotOnWorm = (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
+				PtOnWorm = (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
 			
 			}else{
 				/** Track based on the centroid of the binary image **/
-				PtOnWorm = exp->Params->FluorFeatures->Centroid;
+				PtOnWorm = exp->Worm->FluorFeatures->centroid;
 			}
 
 			/** Adjust the stage velocity to keep that point centered in the field of view **/

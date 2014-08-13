@@ -47,6 +47,17 @@
  #error "#include AndysOpenCVLib.h" must appear in source files before "#include WormAnalysis.h"
 #endif
 
+#ifndef __OPENCV_HIGHGUI_H__
+ #error "Weird. Highgui H is also not defined!"
+#endif
+
+
+#ifndef __OPENCV_IMGPROC_IMGPROC_C_H__
+ #error "Doh! For some reason its not including  imgproc_c_h correctly!"
+#endif
+
+
+
 
 typedef struct WormAnalysisParamStruct{
 	/* WormAnalyisisParam is a structure containing inputs
@@ -202,8 +213,8 @@ typedef struct WormTimeEvolutionStruct{
  *
  */
 typedef struct WormFluorStruct{
-	CvPoint centroid;
-	CvMoments moments;
+	CvPoint* centroid;
+	CvMoments* moments;
 }WormFluor;
 
 
@@ -423,6 +434,23 @@ int DestroyWormTimeEvolution(WormTimeEvolution** TimeEvolution);
 
 int AddMeanHeadCurvature(WormTimeEvolution* TimeEvolution, double CurrHeadCurvature, WormAnalysisParam* AnalysisParam);
 
+
+
+
+
+/************************************************************/
+/* Creating and Destroying WormFluor Structure				*/
+/*  					 									*/
+/*															*/
+/************************************************************/
+
+/*
+ * Creates and allocates memory for a WormFluor Structure
+ * (which contains information about the worm when we are in fluorescence mode) 
+ */
+WormFluor* CreateWormFluor();
+
+int DestroyWormFluor(WormFluor* Fluor);
 
 
 
