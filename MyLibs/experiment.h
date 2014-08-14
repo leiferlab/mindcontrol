@@ -85,7 +85,8 @@ typedef struct ExperimentStruct{
 	
 	
 	/** GuiWindowNames **/
-	char* WinDisp ;
+	char* WinDisp;
+	char* WinDisp2;
 	char* WinCon1;
 	char* WinCon2;
 	char* WinCon3;

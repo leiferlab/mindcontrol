@@ -463,7 +463,8 @@ UINT Thread(LPVOID lpdwParam) {
 			TICTOC::timer().tic("DisplayThreadGuts");
 			TICTOC::timer().tic("cvShowImage");
 			if (exp->Params->OnOff){
-				cvShowImage("Display",exp->CurrentSelectedImg);
+				cvShowImage(exp->WinDisp, exp->HUDS);
+				cvShowImage(exp->WinDisp2,exp->CurrentSelectedImg);
 			}else{
 				cvShowImage(exp->WinDisp, exp->fromCCD->iplimg);
 			}

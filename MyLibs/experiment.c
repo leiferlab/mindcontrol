@@ -97,6 +97,7 @@ Experiment* CreateExperimentStruct() {
 
 	/** GuiWindowNames **/
 	exp->WinDisp = NULL;
+	exp->WinDisp2 = NULL;
 	exp->WinCon1 = NULL;
 	exp->WinCon2 = NULL;
 	exp->WinCon3 = NULL;
@@ -723,6 +724,7 @@ int HandleIlluminationTiming(Experiment* exp) {
 void AssignWindowNames(Experiment* exp) {
 
 	char* disp1 = (char*) malloc(strlen("Display"));
+	char* disp2 = (char*) malloc(strlen("Display2"));
 	char* control1 = (char*) malloc(strlen("Controls"));
 	char* control2 = (char*) malloc(strlen("MoreControls"));
 	char* control3 = (char*) malloc(strlen("EvenMoreControls"));
@@ -733,6 +735,7 @@ void AssignWindowNames(Experiment* exp) {
 	control3 = "EvenMoreControls";
 
 	exp->WinDisp = disp1;
+	exp->WinDisp2=disp2;
 	exp->WinCon1 = control1;
 	exp->WinCon2 = control2;
 	exp->WinCon3 = control3;
@@ -746,6 +749,8 @@ void AssignWindowNames(Experiment* exp) {
 void ReleaseWindowNames(Experiment* exp) {
 	if (exp->WinDisp != NULL)
 		free(exp->WinDisp);
+	if (exp->WinDisp2 != NULL)
+		free(exp->WinDisp2);
 	if (exp->WinCon1 != NULL)
 		free(exp->WinCon1);
 	if (exp->WinCon2 != NULL)
@@ -790,11 +795,16 @@ void SetupGUI(Experiment* exp) {
 	printf("Begining to setup GUI\n");
 
 	//	cvNamedWindow(exp->WinDisp); // <-- This goes into the thread.
-	cvNamedWindow("Display");
-
+	cvNamedWindow(exp->WinDisp);
+	cvNamedWindow(exp->WinDisp2);
 
 	cvNamedWindow(exp->WinCon1);
-	cvResizeWindow(exp->WinCon1, 500, 1000);
+	if (exp->FluorMode){
+		cvResizeWindow(exp->WinCon1, 500, 450);
+	} else {
+		cvResizeWindow(exp->WinCon1, 500, 1000);
+
+	}
 
 	cvNamedWindow("ProtoIllum");
 
@@ -808,8 +818,10 @@ void SetupGUI(Experiment* exp) {
 	cvCreateTrackbar("On", exp->WinCon1, &(exp->Params->OnOff), 1, (int) NULL);
 
 	/** Temporal Coding **/
-	cvCreateTrackbar("TemporalIQ", exp->WinCon1, &(exp->Params->TemporalOn), 1,
+	if (!(exp->FluorMode)){
+		cvCreateTrackbar("TemporalIQ", exp->WinCon1, &(exp->Params->TemporalOn), 1,
 			(int) NULL);
+	}
 
 	/** Segmentation Parameters**/
 	cvCreateTrackbar("Threshold", exp->WinCon1, &(exp->Params->BinThresh), 255,
@@ -820,37 +832,42 @@ void SetupGUI(Experiment* exp) {
 				15, (int) NULL);
 	cvCreateTrackbar("DilateErode", exp->WinCon1, &(exp->Params->DilateErode),
 					1, (int) NULL);
-	cvCreateTrackbar("ScalePx", exp->WinCon1, &(exp->Params->LengthScale), 50,
-			(int) NULL);
-	cvCreateTrackbar("Proximity", exp->WinCon1,
-			&(exp->Params->MaxLocationChange), 100, (int) NULL);
+					
+	if (!(exp->FluorMode)){				
+		cvCreateTrackbar("ScalePx", exp->WinCon1, &(exp->Params->LengthScale), 50,
+				(int) NULL);
+		cvCreateTrackbar("Proximity", exp->WinCon1,
+				&(exp->Params->MaxLocationChange), 100, (int) NULL);
+	}
 
 	/**Illumination Parameters **/
-	cvCreateTrackbar("x", exp->WinCon1, &(exp->Params->IllumSquareOrig.x),
-			exp->Params->DefaultGridSize.width, (int) NULL);
-	cvCreateTrackbar("y", exp->WinCon1, &(exp->Params->IllumSquareOrig.y),
-			exp->Params->DefaultGridSize.height, (int) NULL);
-	cvCreateTrackbar("xRad", exp->WinCon1,
-			&(exp->Params->IllumSquareRad.width), exp->Params->DefaultGridSize.width,
-			(int) NULL);
-	cvCreateTrackbar("yRad", exp->WinCon1,
-			&(exp->Params->IllumSquareRad.height), exp->Params->DefaultGridSize.height,
-			(int) NULL);
+	if (!(exp->FluorMode)){
+		cvCreateTrackbar("x", exp->WinCon1, &(exp->Params->IllumSquareOrig.x),
+				exp->Params->DefaultGridSize.width, (int) NULL);
+		cvCreateTrackbar("y", exp->WinCon1, &(exp->Params->IllumSquareOrig.y),
+				exp->Params->DefaultGridSize.height, (int) NULL);
+		cvCreateTrackbar("xRad", exp->WinCon1,
+				&(exp->Params->IllumSquareRad.width), exp->Params->DefaultGridSize.width,
+				(int) NULL);
+		cvCreateTrackbar("yRad", exp->WinCon1,
+				&(exp->Params->IllumSquareRad.height), exp->Params->DefaultGridSize.height,
+				(int) NULL);
 
-	cvCreateTrackbar("IllumDuration", exp->WinCon1,
-			&(exp->Params->IllumDuration), 70, (int) NULL);
-	cvCreateTrackbar("DLPFlashOn", exp->WinCon1,
-			&(exp->Params->DLPOnFlash), 1, (int) NULL);
+		cvCreateTrackbar("IllumDuration", exp->WinCon1,
+				&(exp->Params->IllumDuration), 70, (int) NULL);
+		cvCreateTrackbar("DLPFlashOn", exp->WinCon1,
+				&(exp->Params->DLPOnFlash), 1, (int) NULL);
 
-	cvCreateTrackbar("IllumSweepHT", exp->WinCon1,
-				&(exp->Params->IllumSweepHT), 1, (int) NULL);
+		cvCreateTrackbar("IllumSweepHT", exp->WinCon1,
+					&(exp->Params->IllumSweepHT), 1, (int) NULL);
 
-	cvCreateTrackbar("IllumSweepOn", exp->WinCon1,
-				&(exp->Params->IllumSweepOn), 1, (int) NULL);
+		cvCreateTrackbar("IllumSweepOn", exp->WinCon1,
+					&(exp->Params->IllumSweepOn), 1, (int) NULL);
 
 
-	cvCreateTrackbar("DLPOn", exp->WinCon1, &(exp->Params->DLPOn), 1,
-			(int) NULL);
+		cvCreateTrackbar("DLPOn", exp->WinCon1, &(exp->Params->DLPOn), 1,
+				(int) NULL);
+	}
 
 	/** Record Data **/
 	cvCreateTrackbar("RecordOn", exp->WinCon1, &(exp->Params->Record), 1,
@@ -858,47 +875,54 @@ void SetupGUI(Experiment* exp) {
 
 	/****** Setup Debug Control Panel ******/
 	cvNamedWindow(exp->WinCon2);
-	cvResizeWindow(exp->WinCon2, 450, 800);
-	cvCreateTrackbar("FloodLight", exp->WinCon2,
-			&(exp->Params->IllumFloodEverything), 1, (int) NULL);
+	
+	if (exp->FluorMode){
+		cvResizeWindow(exp->WinCon2, 450, 275);
+	}else{
+		cvResizeWindow(exp->WinCon2, 450, 800);
+	}
+	
+		if (!(exp->FluorMode)){
+		cvCreateTrackbar("FloodLight", exp->WinCon2,
+				&(exp->Params->IllumFloodEverything), 1, (int) NULL);
 
-	/** Levels **/
-	cvCreateTrackbar("Min",exp->WinCon2,&(exp->Params->LevelsMin),255, (int) NULL );
-	cvCreateTrackbar("Max",exp->WinCon2,&(exp->Params->LevelsMax),255, (int) NULL );
+		/** Levels **/
+		cvCreateTrackbar("Min",exp->WinCon2,&(exp->Params->LevelsMin),255, (int) NULL );
+		cvCreateTrackbar("Max",exp->WinCon2,&(exp->Params->LevelsMax),255, (int) NULL );
 
-	/** Setup Information about Curvature Analysis on the extra control panel **/
-	//Curvature analysis? Yes / No
-	cvCreateTrackbar("KAnalyzeOn", exp->WinCon2,
-			&(exp->Params->CurvatureAnalyzeOn), 1, (int) NULL);
+		/** Setup Information about Curvature Analysis on the extra control panel **/
+		//Curvature analysis? Yes / No
+		cvCreateTrackbar("KAnalyzeOn", exp->WinCon2,
+				&(exp->Params->CurvatureAnalyzeOn), 1, (int) NULL);
 
-	//Trigger based on the derivative of the mean curvature of the head? Yes/No
-	cvCreateTrackbar("KTriggerOn", exp->WinCon2,
-			&(exp->Params->CurvaturePhaseTriggerOn), 1, (int) NULL);
+		//Trigger based on the derivative of the mean curvature of the head? Yes/No
+		cvCreateTrackbar("KTriggerOn", exp->WinCon2,
+				&(exp->Params->CurvaturePhaseTriggerOn), 1, (int) NULL);
 
-	//How many number of frames do we go back in time to calculate the derivative?
-	cvCreateTrackbar("KNumFrames", exp->WinCon2,
-				&(exp->Params->CurvaturePhaseNumFrames), 50, (int) NULL);
+		//How many number of frames do we go back in time to calculate the derivative?
+		cvCreateTrackbar("KNumFrames", exp->WinCon2,
+					&(exp->Params->CurvaturePhaseNumFrames), 50, (int) NULL);
 
-	//Abs value threshold for mean curvature, greater than which we illuminate
-	cvCreateTrackbar("KThresh*10", exp->WinCon2,
-				&(exp->Params->CurvaturePhaseThreshold), 100, (int) NULL);
+		//Abs value threshold for mean curvature, greater than which we illuminate
+		cvCreateTrackbar("KThresh*10", exp->WinCon2,
+					&(exp->Params->CurvaturePhaseThreshold), 100, (int) NULL);
 
-	//Illuminate during sign of k positive or negative
-	cvCreateTrackbar("KThresh+/-", exp->WinCon2,
-				&(exp->Params->CurvaturePhaseThresholdPositive), 1, (int) NULL);
+		//Illuminate during sign of k positive or negative
+		cvCreateTrackbar("KThresh+/-", exp->WinCon2,
+					&(exp->Params->CurvaturePhaseThresholdPositive), 1, (int) NULL);
 
 
-	//Illuminate for positive or negative derivative of curvature (kdot >? 0)?
-	cvCreateTrackbar("KdotThresh+/-", exp->WinCon2,
-					&(exp->Params->CurvaturePhaseDerivThresholdPositive), 1, (int) NULL);
+		//Illuminate for positive or negative derivative of curvature (kdot >? 0)?
+		cvCreateTrackbar("KdotThresh+/-", exp->WinCon2,
+						&(exp->Params->CurvaturePhaseDerivThresholdPositive), 1, (int) NULL);
 
-	cvCreateTrackbar("IllumRefractPeriod", exp->WinCon2,
-			&(exp->Params->IllumRefractoryPeriod), 70, (int) NULL);
+		cvCreateTrackbar("IllumRefractPeriod", exp->WinCon2,
+				&(exp->Params->IllumRefractoryPeriod), 70, (int) NULL);
 
-	//Use the minimum DLP On and Refractory Period?
-	cvCreateTrackbar("StayOn&Refract", exp->WinCon2,
-					&(exp->Params->StayOnAndRefract), 1, (int) NULL);
-					
+		//Use the minimum DLP On and Refractory Period?
+		cvCreateTrackbar("StayOn&Refract", exp->WinCon2,
+						&(exp->Params->StayOnAndRefract), 1, (int) NULL);
+		}
 	
 	/** Software Defined Circle Aperture **/
 	
@@ -956,8 +980,10 @@ void SetupGUI(Experiment* exp) {
 		cvCreateTrackbar("StageSpeed",exp->WinCon1,&(exp->Params->stageSpeedFactor),300, (int) NULL);
 		/* Within the Activezone, the gain on the feedback is linear with distance, outside it is  flat */
 		cvCreateTrackbar("ActiveZone",exp->WinCon1,&(exp->Params->stageROIRadius),300, (int) NULL);
-		cvCreateTrackbar("TargetSeg",exp->WinCon1,&(exp->Params->stageTargetSegment),99, (int) NULL);
-
+		
+		if (!(exp->FluorMode)){
+			cvCreateTrackbar("TargetSeg",exp->WinCon1,&(exp->Params->stageTargetSegment),99, (int) NULL);
+		}
 
 		 /** Specifiy the target for trackign by double clicking on the image **/
 		 cvSetMouseCallback( "Display", on_mouse, (void*) exp);
