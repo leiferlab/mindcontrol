@@ -1345,7 +1345,7 @@ int SetupRecording(Experiment* exp) {
 		HUDSFileName = CreateFileName(exp->dirname, exp->outfname, "_HUDS.avi");
 
 		exp->Vid = cvCreateVideoWriter(MovieFileName,
-				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX / 2, NSIZEY / 2),
+				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX , NSIZEY),
 				0);
 		exp->VidHUDS = cvCreateVideoWriter(HUDSFileName,
 				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX / 2, NSIZEY / 2),
@@ -1770,12 +1770,9 @@ void DoWriteToDisk(Experiment* exp) {
 
 	/** Record VideoFrame to Disk**/
 	if (exp->RECORDVID && exp->Params->Record) {
-		TICTOC::timer().tic("cvResize");
-		cvResize(exp->Worm->ImgOrig, exp->SubSampled, CV_INTER_LINEAR);
-		TICTOC::timer().toc("cvResize");
-
+	
 		TICTOC::timer().tic("cvWriteFrame");
-		cvWriteFrame(exp->Vid, exp->SubSampled);
+		cvWriteFrame(exp->Vid, exp->Worm->ImgOrig);
 		if (exp->Vid==NULL ) printf("\tERROR in DoWriteToDisk!\n\texp->Vid is NULL\n");
 		if (exp->SubSampled ==NULL ) printf("\tERROR in DoWriteToDisk!\n\texp->exp->Subsampled==NULL\n");
 
