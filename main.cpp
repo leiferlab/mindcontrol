@@ -111,6 +111,12 @@ int main (int argc, char** argv){
 	/** Create a new experiment object **/
 	Experiment* exp=CreateExperimentStruct();
 
+
+
+	/** Deal with CommandLineArguments **/
+	LoadCommandLineArguments(exp,argc,argv);
+	if (HandleCommandLineArguments(exp)==-1) return -1;
+
 	/** Start Camera or Vid Input & Set Input Dimensions **/
 	RollVideoInput(exp);  
 
@@ -118,11 +124,7 @@ int main (int argc, char** argv){
 	InitializeExperiment(exp);
 	exp->e=0; //set errors to zero.
 
-
-	/** Deal with CommandLineArguments **/
-	LoadCommandLineArguments(exp,argc,argv);
-	if (HandleCommandLineArguments(exp)==-1) return -1;
-
+	
 	/** Read In Calibration Data ***/
 	if (exp->RecordOnly==0) { // If we want to use a DLP then we better do calibration
 		if (HandleCalibrationData(exp)<0) return -1;

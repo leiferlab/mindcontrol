@@ -229,7 +229,7 @@ void displayHelp() {
 			"\t-i  InputVideo.avi\n\t\tNo camera. Use video file source instead.\n\n");
 	printf(
 			"\t-s\n\t\tSimulate the existence of DLP. (No physical DLP required.)\n\n");
-	printf("\t-r\n\t\tRecord Only. Don't even bother simulating the DLP. No DLP or calibration files required.")
+	printf("\t-r\n\t\tRecord Only. Don't even bother simulating the DLP. No DLP or calibration files required.");
 	printf("\t-g\n\t\tUse camera attached to FrameGrabber.\n\n");
 	printf("\t-t\n\t\tUse USB stage tracker.\n\n");
 	printf("\t-x\n\tx 512\t Target x position  of worm for stage feedback loop. 0 is left.\n\n");
@@ -251,7 +251,7 @@ int HandleCommandLineArguments(Experiment* exp) {
 	opterr = 0;
 
 	int c;
-	while ((c = getopt(exp->argc, exp->argv, "si:d:o:p:gtx:y:?")) != -1) {
+	while ((c = getopt(exp->argc, exp->argv, "sri:d:o:p:gtx:y:?")) != -1) {
 		switch (c) {
 		case 'i': /** specify input video file **/
 			exp->VidFromFile = 1;
@@ -289,7 +289,7 @@ int HandleCommandLineArguments(Experiment* exp) {
 		case 'r': /** Run in record-only mode **/
 			exp->SimDLP = 1;
 			exp->RecordOnly=1;
-			break
+			break;
 
 		case 'p': /** Load Protocol **/
 			if (optarg != NULL) {
@@ -1057,7 +1057,7 @@ void RollVideoInput(Experiment* exp) {
 			
 		} else {
 			/** Use ImagingSource USB Camera **/
-			printf("Note.. using an ImagingSource camera is depricated..\n")
+			printf("Note.. using an ImagingSource camera is depricated..\n");
 			printf("1024 x 768px sensor size is hardcoded in...\n");
 		    
 			exp->inputWidth=1024;
@@ -1072,7 +1072,7 @@ void RollVideoInput(Experiment* exp) {
 		}
 
 	}
-	printf("Input frame size is: %d x %d pixels...\n",exp->inputWidth,exp->fg->inputHeight);
+	printf("Input frame size is: %d x %d pixels...\n",exp->inputWidth,exp->inputHeight);
 			
 }
 
@@ -1085,7 +1085,7 @@ void RollVideoInput(Experiment* exp) {
 int HandleCalibrationData(Experiment* exp) {
 
 	exp->Calib
-			= CreateCalibData(cvSize(NSIZEX, NSIZEY), cvSize((exp->inputWidth, exp->inputHeight));
+			= CreateCalibData(cvSize(NSIZEX, NSIZEY), cvSize(exp->inputWidth, exp->inputHeight));
 	int ret = LoadCalibFromFile(exp->Calib, "calib.dat");
 	if (ret != 0) {
 		printf(
@@ -1131,7 +1131,7 @@ void InitializeExperiment(Experiment* exp) {
 	/** Create Worm Data Struct and Worm Parameter Struct **/
 	WormAnalysisData* Worm = CreateWormAnalysisDataStruct();
 	WormAnalysisParam* Params = CreateWormAnalysisParam();
-	InitializeEmptyWormImages(Worm, cvSize((exp->inputWidth, exp->inputHeight));
+	InitializeEmptyWormImages(Worm, cvSize(exp->inputWidth, exp->inputHeight));
 	InitializeWormMemStorage(Worm);
 
 	/** Create SegWormDLP object using memory from the worm object **/
