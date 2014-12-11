@@ -73,11 +73,12 @@ FrameGrabber* CreateFrameGrabberObject(){
  * and prepares the FrameGrabber for Acuisiation
  *
  */
-FrameGrabber* TurnOnFrameGrabber(){
+FrameGrabber* TurnOnFrameGrabber(int desiredWidth, int desiredHeight){
 	FrameGrabber* fg= CreateFrameGrabberObject();
 	InitializeFrameGrabber(fg);
 	//FrameGrabberSetRegionOfInterest(fg,0,127,1024,768);
-	//FrameGrabberSetRegionOfInterest(fg,0,0,1024,768);
+		
+	FrameGrabberSetRegionOfInterest(fg,0,0,desiredWidth,desiredHeight);
 	PrepareFrameGrabberForAcquire(fg);
 	return fg;
 }

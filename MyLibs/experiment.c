@@ -119,6 +119,9 @@ Experiment* CreateExperimentStruct() {
 	/** Input Dimensions **/
 	exp->inputWidth=0;
 	exp->inputHeight=0;
+	exp->desiredInputSizeProvided=0; // 1 means the user provided only a width or height, 2 means the user provided both a width and a height
+	exp->desiredInputWidth=0;
+	exp->desiredInputHeight=0;
 
 	/** FrameGrabber Input **/
 	exp->fg = NULL;
@@ -234,6 +237,9 @@ void displayHelp() {
 	printf("\t-t\n\t\tUse USB stage tracker.\n\n");
 	printf("\t-x\n\tx 512\t Target x position  of worm for stage feedback loop. 0 is left.\n\n");
 	printf("\t-y\n\ty 384\t Target y position of worm for stage feedback loop. 0 is top.\n\n");
+	printf("\t-w 1088 \n\t\t Set the desired camera ROI width to 1088 (note this only works for the framegrabber) and must be consistent with pylon.\n\n");
+	printf("\t-h 1088 \n\t\t Set the desired camera ROI height to 1088 (note this only works for the framegrabber) and must be consistent with pylon.\n\n");
+	
 	printf(
 			"\t-p  protocol.yml\n\t\tIlluminate according to a YAML protocol file.\n\n");
 	printf("\t-?\n\t\tDisplay this help.\n\n");
@@ -251,7 +257,7 @@ int HandleCommandLineArguments(Experiment* exp) {
 	opterr = 0;
 
 	int c;
-	while ((c = getopt(exp->argc, exp->argv, "sri:d:o:p:gtx:y:?")) != -1) {
+	while ((c = getopt(exp->argc, exp->argv, "sri:d:o:p:gtx:y:w:h:?")) != -1) {
 		switch (c) {
 		case 'i': /** specify input video file **/
 			exp->VidFromFile = 1;
@@ -326,6 +332,20 @@ int HandleCommandLineArguments(Experiment* exp) {
 					exp->stageFeedbackTarget.y = atoi(optarg);
 				}
 				printf("Stage feedback target y= %d pixels.\n",exp->stageFeedbackTarget.y );
+		break;
+		
+		case 'w': /** Pass in a desired camera input width **/
+				if (optarg != NULL) {
+					exp->desiredInputWidth = atoi(optarg);
+					exp->desiredInputSizeProvided=exp->desiredInputSizeProvided + 1;
+				}
+		break;
+
+		case 'h': /** Pass in a desired camera input width **/
+				if (optarg != NULL) {
+					exp->desiredInputHeight = atoi(optarg);
+					exp->desiredInputSizeProvided=exp->desiredInputSizeProvided + 1;
+				}
 		break;
 
 
@@ -1046,12 +1066,24 @@ void RollVideoInput(Experiment* exp) {
 		/** Use source from camera **/
 		if (exp->UseFrameGrabber) {
 			/**Use Frame Grabber **/
-			exp->fg = TurnOnFrameGrabber();
+			
+			if (exp->desiredInputSizeProvided==2){ 
+				// if the user provided a desired width and hegiht
+				exp->inputWidth=exp->desiredInputWidth;
+				exp->inputHeight=exp->desiredInputHeight;
+				
+			}else{
+			
+				exp->inputWidth=exp->fg->xsize;
+				exp->inputHeight=exp->fg->ysize;
+			}
+			
+			
+			exp->fg = TurnOnFrameGrabber(exp->inputWidth, exp->inputHeight);
 
 			printf("Query frame grabber for size of images..\n");
 			
-			exp->inputWidth=exp->fg->xsize;
-			exp->inputHeight=exp->fg->ysize;
+
 			
 			
 			

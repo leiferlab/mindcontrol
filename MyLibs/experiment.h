@@ -113,6 +113,9 @@ typedef struct ExperimentStruct{
 	/** Input Dimensions **/
 	int inputWidth;
 	int inputHeight;
+	int desiredInputSizeProvided; // 1 means the user provided only a width or height, 2 means the user provided both a width and a height
+	int desiredInputWidth;
+	int desiredInputHeight;
 
 	/** MostRecently Observed CameraFrameNumber **/
 	unsigned long lastFrameSeenOutside;

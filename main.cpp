@@ -223,7 +223,6 @@ int main (int argc, char** argv){
 			/** Handle head-tail illumination sweep **/
 			HandleIlluminationSweep(exp);
 
-
 			
 			/** Load Image into Our Worm Objects **/
 
@@ -232,36 +231,37 @@ int main (int argc, char** argv){
 
 			/** Apply Levels**/  //Note this is slightly redundant with LoadWormImg
 			if (exp->e == 0) exp->e=simpleAdjustLevels(exp->fromCCD->iplimg, exp->Worm->ImgOrig, exp->Params->LevelsMin, exp->Params->LevelsMax);
-
+			
 
 			TICTOC::timer().tic("EntireSegmentation");
 			/** Do Segmentation **/
-			DoSegmentation(exp);
+			if (exp->RecordOnly==0) DoSegmentation(exp);
 			TICTOC::timer().toc("EntireSegmentation");
-
 
 
 			/** Real-Time Curvature Phase Analysis, and phase induced illumination **/
 		    HandleCurvaturePhaseAnalysis(exp);
 
+			
 			/** If the DLP is not displaying right now, than turn off the mirrors */
 			ClearDLPifNotDisplayingNow(exp);
 
 
+			
 			/* Transform the segmented worm coordinates into DLP space */
 			/* Note that this is much more computationally efficient than to transform the original image 
 			or to transform the resulting illumination pattern                                           */ 
-			
+						
 			TICTOC::timer().tic("TransformSegWormCam2DLP");
-			if (exp->e == 0 && exp->RecordOnly!=0){
+			if (exp->e == 0 && exp->RecordOnly==0){
 				TransformSegWormCam2DLP(exp->Worm->Segmented, exp->segWormDLP,exp->Calib);
 			}
 			TICTOC::timer().toc("TransformSegWormCam2DLP");
 
 			/** Handle the Choise of Illumination Protocol Here**/
 			/** ANDY: write this here **/
-			if (exp->RecordOnly!=0) HandleTimedSecondaryProtocolStep(exp->p,exp->Params);
-
+			if (exp->RecordOnly==0) HandleTimedSecondaryProtocolStep(exp->p,exp->Params);
+	
 
 			/*** Do Some Illumination ***/
 			
@@ -269,7 +269,7 @@ int main (int argc, char** argv){
 			SetFrame(exp->forDLP,0);
 			SetFrame(exp->IlluminationFrame,0);
 			
-			if (exp->e == 0 && exp->RecordOnly!=0) {
+			if (exp->e == 0 && exp->RecordOnly==0) {
 				if (exp->Params->IllumFloodEverything) {
 					SetFrame(exp->IlluminationFrame,128); // Turn all of the pixels on
 					SetFrame(exp->forDLP,128); // Turn all of the pixels o
@@ -301,6 +301,7 @@ int main (int argc, char** argv){
 			}
 
 
+			
 			TICTOC::timer().tic("SendFrameToDLP");
 			if (exp->e == 0 && exp->Params->DLPOn && !(exp->SimDLP)) T2DLP_SendFrame((unsigned char *) exp->forDLP->binary, exp->myDLP); // Send image to DLP
 			TICTOC::timer().toc("SendFrameToDLP");
@@ -308,7 +309,10 @@ int main (int argc, char** argv){
 
 			/*** DIsplay Some Monitoring Output ***/
 			if (exp->e == 0) CreateWormHUDS(exp->HUDS,exp->Worm,exp->Params,exp->IlluminationFrame);
+			
+			
 			if (exp->e==0 && exp->stageIsPresent==1) MarkRecenteringTarget(exp);
+
 
 
 			if (exp->e == 0 &&  EverySoOften(exp->Worm->frameNum,exp->Params->DispRate) ){

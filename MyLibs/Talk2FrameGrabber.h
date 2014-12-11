@@ -94,7 +94,7 @@ FrameGrabber* CreateFrameGrabberObject();
  * and prepares the FrameGrabber for Acuisiation
  *
  */
-FrameGrabber* TurnOnFrameGrabber();
+FrameGrabber* TurnOnFrameGrabber(int desiredWidth, int desiredHeight);
 
 /*
  * Initializes the frame grabber with a fg object

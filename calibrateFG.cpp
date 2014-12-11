@@ -522,7 +522,7 @@ int main (int argc, char** argv){
 	c->LoopsPerPt=20; // Number of frames we use to calibrate a given point
 
 	/** Start Camera **/
-	c->fg= TurnOnFrameGrabber();
+	c->fg= TurnOnFrameGrabber(NSIZEX,NSIZEY);
 
 	/** Set the acquisition timeout to be very long to give the camera time to take long exposures, as is typical with calibration **/
 	setAcquisitionTimeout(c->fg,200);

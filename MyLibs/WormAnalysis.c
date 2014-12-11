@@ -1091,12 +1091,17 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 	//cvDrawContours(TempImage, Worm->Boundary, cvScalar(255,0,0),cvScalar(0,255,0),100);
 
 	DrawSequence(&TempImage,Worm->Boundary);
-
+	
 //	DrawSequence(&TempImage,Worm->Segmented->LeftBound);
 //	DrawSequence(&TempImage,Worm->Segmented->RightBound);
 
+	if (!(Worm->Tail==NULL) && !(Worm->Head==NULL)) {
+	
+	
 	cvCircle(TempImage,*(Worm->Tail),CircleDiameterSize,cvScalar(255,255,255),1,CV_AA,0);
 	cvCircle(TempImage,*(Worm->Head),CircleDiameterSize/2,cvScalar(255,255,255),1,CV_AA,0);
+	
+	}
 
 	/** Prepare Text **/
 	CvFont font;
