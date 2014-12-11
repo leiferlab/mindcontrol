@@ -89,6 +89,7 @@ Experiment* CreateExperimentStruct() {
 
 	/** Simulation? True/False **/
 	exp->SimDLP = 0;
+	exp->RecordOnly = 0;
 	exp->VidFromFile = 0;
 
 	/** GuiWindowNames **/
@@ -114,6 +115,10 @@ Experiment* CreateExperimentStruct() {
 
 	/** Camera Input**/
 	exp->MyCamera = NULL;
+	
+	/** Input Dimensions **/
+	exp->inputWidth=0;
+	exp->inputHeight=0;
 
 	/** FrameGrabber Input **/
 	exp->fg = NULL;
@@ -224,6 +229,7 @@ void displayHelp() {
 			"\t-i  InputVideo.avi\n\t\tNo camera. Use video file source instead.\n\n");
 	printf(
 			"\t-s\n\t\tSimulate the existence of DLP. (No physical DLP required.)\n\n");
+	printf("\t-r\n\t\tRecord Only. Don't even bother simulating the DLP. No DLP or calibration files required.")
 	printf("\t-g\n\t\tUse camera attached to FrameGrabber.\n\n");
 	printf("\t-t\n\t\tUse USB stage tracker.\n\n");
 	printf("\t-x\n\tx 512\t Target x position  of worm for stage feedback loop. 0 is left.\n\n");
@@ -279,6 +285,11 @@ int HandleCommandLineArguments(Experiment* exp) {
 		case 's': /** Run in DLP simulation Mode **/
 			exp->SimDLP = 1;
 			break;
+		
+		case 'r': /** Run in record-only mode **/
+			exp->SimDLP = 1;
+			exp->RecordOnly=1;
+			break
 
 		case 'p': /** Load Protocol **/
 			if (optarg != NULL) {
@@ -1017,6 +1028,8 @@ void UpdateGUI(Experiment* exp) {
  * Allocate Camera Data
  * Select Camera and Show Properties dialog box
  * Start Grabbing Frames as quickly as possible
+ *
+ * AND: set the input image size 
  * *
  * OR open up the video file for reading.
  */
@@ -1024,34 +1037,32 @@ void RollVideoInput(Experiment* exp) {
 	if (exp->VidFromFile) { /** Use source from file **/
 		/** Define the File catpure **/
 		exp->capture = cvCreateFileCapture(exp->infname);
-
+		
+		/**Set the Input Image size **/
+		exp->inputWidth=cvGetCaptureProperty(exp->capture,CV_CAP_PROP_FRAME_WIDTH);
+		exp->inputHeight=cvGetCaptureProperty(exp->capture,CV_CAP_PROP_FRAME_HEIGHT);
+		
 	} else {
 		/** Use source from camera **/
 		if (exp->UseFrameGrabber) {
+			/**Use Frame Grabber **/
 			exp->fg = TurnOnFrameGrabber();
 
-			printf("Checking frame size of frame grabber..\n");
-			/** Check to see that our image sizes are all the same. **/
-			if ((int) exp->fg->xsize != exp->fromCCD->size.width
-					|| (int) exp->fg->ysize != exp->fromCCD->size.height) {
-				printf("Error in RollVideoInput!\n");
-				printf(
-						"Size from framegrabber does not match size in IplImage fromCCD!\n");
-				printf(" exp->fg->xsize=%d\n", (int) exp->fg->xsize);
-				printf(" exp->fromCCD->size.width=%d\n",
-						exp->fromCCD->size.width);
-				printf(" exp->fg->ysize=%d\n", (int) exp->fg->ysize);
-				printf(" exp->fromCCD->size.height=%d\n",
-						exp->fromCCD->size.height);
-				return;
-			}
-
-			printf("Frame size checks out..");
-
-			/**Use Frame Grabber **/
+			printf("Query frame grabber for size of images..\n");
+			
+			exp->inputWidth=exp->fg->xsize;
+			exp->inputHeight=exp->fg->ysize;
+			
+			
+			
 		} else {
 			/** Use ImagingSource USB Camera **/
-
+			printf("Note.. using an ImagingSource camera is depricated..\n")
+			printf("1024 x 768px sensor size is hardcoded in...\n");
+		    
+			exp->inputWidth=1024;
+			exp->inputHeight=768;
+			
 			/** Turn on Camera **/
 			T2Cam_InitializeLib();
 			T2Cam_AllocateCamData(&(exp->MyCamera));
@@ -1061,6 +1072,8 @@ void RollVideoInput(Experiment* exp) {
 		}
 
 	}
+	printf("Input frame size is: %d x %d pixels...\n",exp->inputWidth,exp->fg->inputHeight);
+			
 }
 
 /**** Read in Calibration Data ***/
@@ -1070,8 +1083,9 @@ void RollVideoInput(Experiment* exp) {
  * return -1 if the calibration from file doesn't exist.
  */
 int HandleCalibrationData(Experiment* exp) {
+
 	exp->Calib
-			= CreateCalibData(cvSize(NSIZEX, NSIZEY), cvSize(NSIZEX, NSIZEY));
+			= CreateCalibData(cvSize(NSIZEX, NSIZEY), cvSize((exp->inputWidth, exp->inputHeight));
 	int ret = LoadCalibFromFile(exp->Calib, "calib.dat");
 	if (ret != 0) {
 		printf(
@@ -1092,22 +1106,23 @@ int HandleCalibrationData(Experiment* exp) {
  *
  */
 void InitializeExperiment(Experiment* exp) {
-
+	
+	
 	/*** Create IplImage **/
-	IplImage* SubSampled = cvCreateImage(cvSize(NSIZEX / 2, NSIZEY / 2),
+	IplImage* SubSampled = cvCreateImage(cvSize(exp->inputWidth/ 2, exp->inputHeight / 2),
 			IPL_DEPTH_8U, 1);
-	IplImage* HUDS = cvCreateImage(cvSize(NSIZEX, NSIZEY), IPL_DEPTH_8U, 1);
+	IplImage* HUDS = cvCreateImage(cvSize(exp->inputWidth, exp->inputHeight), IPL_DEPTH_8U, 1);
 
 
-	exp->CurrentSelectedImg= cvCreateImage(cvSize(NSIZEX,NSIZEY), IPL_DEPTH_8U,1);
+	exp->CurrentSelectedImg= cvCreateImage(cvSize(exp->inputWidth,exp->inputHeight), IPL_DEPTH_8U,1);
 
 	exp->SubSampled = SubSampled;
 	exp->HUDS = HUDS;
 
 	/*** Create Frames **/
-	Frame* fromCCD = CreateFrame(cvSize(NSIZEX, NSIZEY));
+	Frame* fromCCD = CreateFrame(cvSize(exp->inputWidth, exp->inputHeight));
 	Frame* forDLP = CreateFrame(cvSize(NSIZEX, NSIZEY));
-	Frame* IlluminationFrame = CreateFrame(cvSize(NSIZEX, NSIZEY));
+	Frame* IlluminationFrame = CreateFrame(cvSize(exp->inputWidth, exp->inputHeight));
 
 	exp->fromCCD = fromCCD;
 	exp->forDLP = forDLP;
@@ -1116,7 +1131,7 @@ void InitializeExperiment(Experiment* exp) {
 	/** Create Worm Data Struct and Worm Parameter Struct **/
 	WormAnalysisData* Worm = CreateWormAnalysisDataStruct();
 	WormAnalysisParam* Params = CreateWormAnalysisParam();
-	InitializeEmptyWormImages(Worm, cvSize(NSIZEX, NSIZEY));
+	InitializeEmptyWormImages(Worm, cvSize((exp->inputWidth, exp->inputHeight));
 	InitializeWormMemStorage(Worm);
 
 	/** Create SegWormDLP object using memory from the worm object **/
@@ -1345,10 +1360,10 @@ int SetupRecording(Experiment* exp) {
 		HUDSFileName = CreateFileName(exp->dirname, exp->outfname, "_HUDS.avi");
 
 		exp->Vid = cvCreateVideoWriter(MovieFileName,
-				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX , NSIZEY),
+				CV_FOURCC('M','J','P','G'), 30, cvSize(exp->inputWidth , exp->inputHeight),
 				0);
 		exp->VidHUDS = cvCreateVideoWriter(HUDSFileName,
-				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX / 2, NSIZEY / 2),
+				CV_FOURCC('M','J','P','G'), 30, cvSize(exp->inputWidth / 2, exp->inputHeight / 2),
 				0);
 		if (exp->Vid ==NULL ) printf("\tERROR in SetupRecording! exp->Vid is NULL\nYou probably are missing the default codec.\n");
 		if (exp->VidHUDS ==NULL ) printf("\tERROR in SetupRecording! exp->VidHUDS is NULL\n You probably are missing the default codec.\n");

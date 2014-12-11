@@ -111,6 +111,8 @@ int main (int argc, char** argv){
 	/** Create a new experiment object **/
 	Experiment* exp=CreateExperimentStruct();
 
+	/** Start Camera or Vid Input & Set Input Dimensions **/
+	RollVideoInput(exp);  
 
 	/** Create memory and objects **/
 	InitializeExperiment(exp);
@@ -122,15 +124,16 @@ int main (int argc, char** argv){
 	if (HandleCommandLineArguments(exp)==-1) return -1;
 
 	/** Read In Calibration Data ***/
-	if (HandleCalibrationData(exp)<0) return -1;
+	if (exp->RecordOnly==0) { // If we want to use a DLP then we better do calibration
+		if (HandleCalibrationData(exp)<0) return -1;
+	}
 
 	/** Load protocol YAML file **/
 	if (exp->pflag) LoadProtocol(exp);
 
 	VerifyProtocol(exp->p);
 
-	/** Start Camera or Vid Input **/
-	RollVideoInput(exp);
+
 
 	/** Prepare DLP ***/
 	if (!(exp->SimDLP)){
@@ -248,22 +251,23 @@ int main (int argc, char** argv){
 			or to transform the resulting illumination pattern                                           */ 
 			
 			TICTOC::timer().tic("TransformSegWormCam2DLP");
-			if (exp->e == 0){
+			if (exp->e == 0 && exp->RecordOnly!=0){
 				TransformSegWormCam2DLP(exp->Worm->Segmented, exp->segWormDLP,exp->Calib);
 			}
 			TICTOC::timer().toc("TransformSegWormCam2DLP");
 
 			/** Handle the Choise of Illumination Protocol Here**/
 			/** ANDY: write this here **/
-			 HandleTimedSecondaryProtocolStep(exp->p,exp->Params);
+			if (exp->RecordOnly!=0) HandleTimedSecondaryProtocolStep(exp->p,exp->Params);
 
 
 			/*** Do Some Illumination ***/
-			if (exp->e == 0) {
-				/** Clear the illumination pattern **/
-				SetFrame(exp->forDLP,0);
-				SetFrame(exp->IlluminationFrame,0);
-
+			
+			/** Clear the illumination pattern **/
+			SetFrame(exp->forDLP,0);
+			SetFrame(exp->IlluminationFrame,0);
+			
+			if (exp->e == 0 && exp->RecordOnly!=0) {
 				if (exp->Params->IllumFloodEverything) {
 					SetFrame(exp->IlluminationFrame,128); // Turn all of the pixels on
 					SetFrame(exp->forDLP,128); // Turn all of the pixels o
@@ -292,8 +296,6 @@ int main (int argc, char** argv){
 				}
 				/** If InvertIllumination is on, then do that now in both cam space and DLP space**/
 				if (exp->Params->IllumInvert) InvertIllumination(exp);
-			} else {
-				printf("Error in exp->e in the mainloop! code line 295\n");
 			}
 
 

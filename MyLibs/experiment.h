@@ -78,6 +78,7 @@
 typedef struct ExperimentStruct{
 	/** Simulation? True/false **/
 	int SimDLP; //1= simulate the DLP, 0= real DLP
+	int RecordOnly; // More stringent then simulate DLP. We're not even going to simulate the output to the DLP.
 	int VidFromFile; // 1 =Video from File, 0=Video From Camera
 
 	/** GuiWindowNames **/
@@ -108,6 +109,10 @@ typedef struct ExperimentStruct{
 
 	/** Video Capture (for simulation mode) **/
 	CvCapture* capture;
+	
+	/** Input Dimensions **/
+	int inputWidth;
+	int inputHeight;
 
 	/** MostRecently Observed CameraFrameNumber **/
 	unsigned long lastFrameSeenOutside;
