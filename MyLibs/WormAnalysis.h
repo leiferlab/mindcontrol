@@ -222,6 +222,9 @@ typedef struct WormFluorStruct{
 typedef struct WormImageAnalysisStruct{
 	CvSize SizeOfImage;
 
+	/** Is the Worm Present? **/
+	int isPresent;
+	
 	/** Frame Info **/
 	int frameNum;
 	int frameNumCamInternal;

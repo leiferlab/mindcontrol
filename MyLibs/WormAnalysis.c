@@ -84,6 +84,7 @@ WormAnalysisData* CreateWormAnalysisDataStruct(){
 
 
 	/*** Set Everythingm To NULL ***/
+	WormPtr->isPresent=0;
 	WormPtr->Head=NULL;
 	WormPtr->Tail=NULL;
 	WormPtr->HeadIndex=0;
@@ -629,6 +630,23 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	cvThreshold(Worm->ImgSmooth,Worm->ImgThresh,Params->BinThresh,255,CV_THRESH_BINARY );
 	TICTOC::timer().toc("cvThreshold");
 
+	/** Check to see if there are any pixels above threshold **/
+	CvScalar pixelsum;
+	pixelsum=cvSum(Worm->ImgThresh);
+	if (pixelsum.val[0]==0){
+	
+			if (Worm->isPresent==1){
+				printf("Lost the worm!\nFailed to find any fluorescence. Maybe the threshold is too high? \n");
+			}
+			printf("~");
+			/** We should set a flag here for the tracker that there is nothing to track **/ 
+			Worm->isPresent=0;
+			return ;
+	} else {
+		Worm->isPresent=1;
+	}
+		
+	
 
 	/** Dilate and Erode **/
 	if (Params->DilateErode==1){
@@ -1195,10 +1213,10 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 	} else {
 		cvCopy(Worm->ImgOrig,TempImage);
 		/** Draw A Circle on the centroid of the fluorescent blob **/ 
-		if (Worm->FluorFeatures!=NULL) {
+		if (Worm->FluorFeatures!=NULL && Worm->isPresent==1) {
 				cvCircle(TempImage,*(Worm->FluorFeatures->centroid),CircleDiameterSize*2,cvScalar(255,255,255),1,CV_AA,0);
 		} else {
-			printf("No centroid found to draw!\n");
+			//printf("No centroid found to draw!\n");
 		}
 	}
 

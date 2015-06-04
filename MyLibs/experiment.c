@@ -2065,6 +2065,11 @@ int HandleStageTracker(Experiment* exp){
 			} else {
 			/** Move the stage to keep the worm centered in the field of view **/
 			
+				/** If there is nothing to track, halt the stage and stop here **/	
+				if 	(exp->Worm->isPresent ==0){
+					ShutOffStage(exp);
+					return 0;
+				}	
 			
 			/** Find The Point on the Worm To Center **/
 			CvPoint* PtOnWorm;
@@ -2075,14 +2080,19 @@ int HandleStageTracker(Experiment* exp){
 					PtOnWorm = (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
 				
 				}else{
+						
 					/** Track based on the centroid of the binary image **/
-					PtOnWorm = (CvPoint*) exp->Worm->FluorFeatures->centroid;
+					PtOnWorm = (CvPoint*) exp->Worm->FluorFeatures->centroid;	
 				}
 
-				/** Adjust the stage velocity to keep that point centered in the field of view **/
-				exp->Worm->stageVelocity=AdjustStageToKeepObjectAtTarget(exp->stage,PtOnWorm,exp->stageFeedbackTarget,exp->Params->stageSpeedFactor, exp->Params->stageROIRadius);
+				
+					/** Adjust the stage velocity to keep that point centered in the field of view **/
+					exp->Worm->stageVelocity=AdjustStageToKeepObjectAtTarget(exp->stage,PtOnWorm,exp->stageFeedbackTarget,exp->Params->stageSpeedFactor, exp->Params->stageROIRadius);
 
-				printf("."); // ANDY: Consider removing this if it takes time.. 
+					printf("."); // ANDY: Consider removing this if it takes time.. 
+				
+						
+				
 			}
 		}
 		if (exp->Params->stageTrackingOn==0){/** Tracking Should be off **/

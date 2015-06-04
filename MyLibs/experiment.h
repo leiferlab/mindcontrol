@@ -173,7 +173,7 @@ typedef struct ExperimentStruct{
 	int RECORDDATA;
 
 	/** Stage Control **/
-	int stageIsPresent;
+	int stageIsPresent;	
 	HANDLE stage; // Handle to USB stage object
 	CvPoint stageVel; //Current velocity of stage
 	CvPoint stageCenter; // Point indicating center of stage.
