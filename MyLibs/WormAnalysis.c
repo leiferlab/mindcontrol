@@ -639,43 +639,7 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	}
 	
 	
-	/** If we are in fluorescence mode  **/
-	/** Note a few line from this code block are from Quan Wen **/
-	if (Params->FluorMode){ 
-		
-		/** Check to see if there are any pixels above threshold **/
-	    CvScalar pixelsum;
-		pixelsum=cvSum(Worm->ImgThresh);
-		if (pixelsum.val[0]==0){
-			printf("Failed to find any fluorescence. Maybe the threshold is too high? \n");
-			return ;
-		}
-		
-		if (Worm->FluorFeatures->moments==NULL){
-			printf("ERROR! Memory has not been allocated for the moments of the blob in FluorFeatures!\n");
-			return;
-		}
-		
-		/** Find the Fluorescence Blob **/		
-		IplImage* TempImage=cvCreateImage(cvGetSize(Worm->ImgThresh),IPL_DEPTH_8U,1);
-		cvCopy(Worm->ImgThresh,TempImage);
-		
-    	TICTOC::timer().tic("cvMoments");
-        cvMoments(TempImage,Worm->FluorFeatures->moments,1);
-    	TICTOC::timer().toc("cvMoments");
-		
-		if (Worm->FluorFeatures->centroid != NULL) {
-			/** Calculate the centroid by performing this calculation on the moments **/
-			*(Worm->FluorFeatures->centroid)=cvPoint(Worm->FluorFeatures->moments->m10/Worm->FluorFeatures->moments->m00,Worm->FluorFeatures->moments->m01/Worm->FluorFeatures->moments->m00);
-		} else {
-			printf("ERROR! Memory has not been allocated for the centroid point in FluorFeatures!\n");
-		}
-			
-		
-			
-		/** If we are in fluroescence mode, we are now done! **/
-		return;
-	}
+
 	
 	
 
@@ -706,7 +670,30 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 		Worm->Boundary=cvCloneSeq(rough);
 	}
 
+	/** If we are in fluorescence mode  **/
+	/** Note a few line from this code block are from Quan Wen **/
+	if (Params->FluorMode){ 
+		
 
+		if (Worm->FluorFeatures->moments==NULL){
+			printf("ERROR! Memory has not been allocated for the moments of the blob in FluorFeatures!\n");
+			return;
+		}
+
+		/** Find the moment of the largest contour, which should be our blob **/
+		TICTOC::timer().tic("cvMoments");
+        cvMoments(Worm->Boundary,Worm->FluorFeatures->moments,1);
+    	TICTOC::timer().toc("cvMoments");
+		
+		
+		if (Worm->FluorFeatures->centroid != NULL) {
+			/** Calculate the centroid by performing this calculation on the moments **/
+			*(Worm->FluorFeatures->centroid)=cvPoint(Worm->FluorFeatures->moments->m10/Worm->FluorFeatures->moments->m00,Worm->FluorFeatures->moments->m01/Worm->FluorFeatures->moments->m00);
+		} else {
+			printf("ERROR! Memory has not been allocated for the centroid point in FluorFeatures!\n");
+		}
+			
+	}
 
 }
 
