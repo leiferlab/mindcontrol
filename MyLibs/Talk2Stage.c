@@ -156,6 +156,24 @@ HANDLE InitializeUsbStage(){
 
 }
 
+
+/*
+ *
+ *  SendCommandToStage This is a wrapper of the Windows function WriteFile()
+ *  See, e.g.  https://msdn.microsoft.com/en-us/library/windows/desktop/aa365747%28v=vs.85%29.aspx
+ *
+ */
+
+BOOL SendCommandToStage(HANDLE hfile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD      lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped){
+	BOOL bErrorFlag;
+	bErrorFlag=WriteFile(hfile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
+	printf(" [SENT STAGE] `%s` \n",lpBuffer);
+	return bErrorFlag;
+
+}
+
+
+
 /*
  If you don't clear some buffer and you are using the virtual com port driver, then 
  the stage stops responding to commands after around the 3300th command. By running this function
@@ -179,7 +197,7 @@ void clearStageBuffer(HANDLE s){
         char * pText; 
         pText = (char *)malloc(sizeof(char)*(Length + 2)); 
         ReadFile(s,pText, Length, &nRead,NULL); 
-		//printf(pText,'%s'); // Display to console
+		printf(" [STAGE REPLY] `%s`\n",pText); // Display to console
         free(pText); 
  		return;
 
@@ -203,7 +221,7 @@ int spinStage(HANDLE s, int xspeed,int yspeed){
 
 	char* buff=(char*) malloc(sizeof(char)*1024);
 	sprintf(buff,"SPIN X=%d Y=%d\r",-yspeed,-xspeed);
-	bErrorFlag=WriteFile(s, buff, strlen(buff), &Length, NULL);
+	bErrorFlag=SendCommandToStage(s, buff, strlen(buff), &Length, NULL);
 	free(buff);
 
 	if (FALSE == bErrorFlag)
@@ -220,7 +238,7 @@ int spinStage(HANDLE s, int xspeed,int yspeed){
 
 int haltStage(HANDLE s){
 		DWORD Length;
-		WriteFile(s, "HALT\r", strlen("HALT\r"), &Length, NULL);
+		SendCommandToStage(s, "HALT\r", strlen("HALT\r"), &Length, NULL);
 		clearStageBuffer(s);
 		return 0;
 
@@ -230,7 +248,7 @@ int moveStageRel(HANDLE s, int xpos, int ypos){
 	DWORD Length;
 	char* buff=(char*) malloc(sizeof(char)*1024);
 	sprintf(buff,"MOVEI X=%d Y=%d\r",xpos,ypos);
-	WriteFile(s, buff, strlen(buff), &Length, NULL);
+	SendCommandToStage(s, buff, strlen(buff), &Length, NULL);
 	free(buff);
 	clearStageBuffer(s);
 	return 0;
@@ -239,7 +257,7 @@ int moveStageRel(HANDLE s, int xpos, int ypos){
 
 int zeroStage(HANDLE s){
 	DWORD Length;
-	WriteFile(s, "HERE X=0 Y=0\r", strlen("HERE X=0 Y=0\r"), &Length, NULL);
+	SendCommandToStage(s, "HERE X=0 Y=0\r", strlen("HERE X=0 Y=0\r"), &Length, NULL);
 	clearStageBuffer(s);
 	return 0;
 
@@ -247,7 +265,7 @@ int zeroStage(HANDLE s){
 
 int centerStage(HANDLE s){
 	DWORD Length;
-	WriteFile(s, "CENTER X=30000 Y=30000\r", strlen("CENTER X=30000 Y=30000\r"), &Length, NULL);
+	SendCommandToStage(s, "CENTER X=30000 Y=30000\r", strlen("CENTER X=30000 Y=30000\r"), &Length, NULL);
 	printf("Centering stage.\n This takes a really really long time.\n");
 	printf("Hit enter when done. This will zero the stage.\n");
 	scanf("");
