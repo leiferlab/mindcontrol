@@ -1580,6 +1580,21 @@ void MarkRecenteringTarget(Experiment* exp){
 	CvPoint a=cvPoint( exp->stageFeedbackTarget.x +2, exp->stageFeedbackTarget.y +2);
 	CvPoint b=cvPoint(exp->stageFeedbackTarget.x -2, exp->stageFeedbackTarget.y -2);
 	cvRectangle(exp->HUDS,a,b, cvScalar(255,255,255),1);
+	
+	/*Also display tracker status */
+		/** Prepare Text **/
+	CvFont font;
+	cvInitFont(&font,CV_FONT_HERSHEY_TRIPLEX ,1.0,1.0,0,2,CV_AA);
+
+	
+	
+	/*** Let the user know if the illumination flood light is on ***/
+	if (exp->Params->stageTrackingOn){
+		cvPutText(exp->HUDS,"Tracking",cvPoint(20,130),&font,cvScalar(255,255,255));
+	} else {
+		cvPutText(exp->HUDS,"NOT Tracking!!",cvPoint(150,300),&font,cvScalar(255,255,255));
+	}
+	
 
 }
 
@@ -2055,7 +2070,14 @@ int ShutOffStage(Experiment* exp){
 int HandleStageTracker(Experiment* exp){
 	if (exp->stageIsPresent==1){ /** If the Stage is Present **/
 		if (exp->stage==NULL) return 0;
-
+		
+				/** If we are tracking but there is nothing to track, turn tracking off but only once **/	
+				if 	(exp->Worm->isPresent ==0 && exp->Params->stageTrackingOn==1){
+					exp->stageIsTurningOff=1;
+					exp->Params->stageTrackingOn=0;
+					printf("Shutting off tracking because  Worm is not present to track..\n");
+				}
+		
 		if (exp->Params->stageTrackingOn==1){
 			if (exp->Params->OnOff==0){ /** if the analysis system is off **/
 				/** Turn the stage off **/
@@ -2065,11 +2087,7 @@ int HandleStageTracker(Experiment* exp){
 			} else {
 			/** Move the stage to keep the worm centered in the field of view **/
 			
-				/** If there is nothing to track, halt the stage and stop here **/	
-				if 	(exp->Worm->isPresent ==0){
-					ShutOffStage(exp);
-					return 0;
-				}	
+
 			
 			/** Find The Point on the Worm To Center **/
 			CvPoint* PtOnWorm;

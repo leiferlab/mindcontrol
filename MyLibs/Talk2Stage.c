@@ -172,13 +172,14 @@ void clearStageBuffer(HANDLE s){
 
         COMSTAT Status; 
         
-        ClearCommError( s, &dwErrors, &Status); 
+        ClearCommError( s, &dwErrors, &Status);  // Windows function to clear a devices error flag
         Length = Status.cbInQue;        // get the rx data length in buffer 
-        // Get data and put it in to iBuffer 
+        // Get data and put it in to pText 
         DWORD nRead; 
         char * pText; 
         pText = (char *)malloc(sizeof(char)*(Length + 2)); 
         ReadFile(s,pText, Length, &nRead,NULL); 
+		//printf(pText,'%s'); // Display to console
         free(pText); 
  		return;
 
@@ -201,7 +202,7 @@ int spinStage(HANDLE s, int xspeed,int yspeed){
 
 
 	char* buff=(char*) malloc(sizeof(char)*1024);
-	sprintf(buff,"SPIN X=%d Y=%d\r",xspeed,-yspeed);
+	sprintf(buff,"SPIN X=%d Y=%d\r",-yspeed,-xspeed);
 	bErrorFlag=WriteFile(s, buff, strlen(buff), &Length, NULL);
 	free(buff);
 

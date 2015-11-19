@@ -638,8 +638,6 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 			if (Worm->isPresent==1){
 				printf("Lost the worm!\nFailed to find any fluorescence. Maybe the threshold is too high? \n");
 			}
-			printf("~");
-			/** We should set a flag here for the tracker that there is nothing to track **/ 
 			Worm->isPresent=0;
 			return ;
 	} else {
