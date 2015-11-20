@@ -1664,6 +1664,7 @@ int HandleKeyStroke(int c, Experiment* exp) {
 		Toggle(&(exp->Params->DLPOn));
 		break;
 	case 'r': /** record **/
+	case 'R':
 		Toggle(&(exp->Params->Record));
 		break;
 	case 'f': /** turn on off flood light **/
@@ -1672,6 +1673,7 @@ int HandleKeyStroke(int c, Experiment* exp) {
 
 	/** on off **/
 	case 'o':
+	case 'O':
 		Toggle(&(exp->Params->OnOff));
 		break;
 	/** On-The Fly Illumination Origin **/

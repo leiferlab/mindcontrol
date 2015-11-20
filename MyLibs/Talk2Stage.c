@@ -238,8 +238,16 @@ int spinStage(HANDLE s, int xspeed,int yspeed){
 
 int haltStage(HANDLE s){
 		DWORD Length;
-		SendCommandToStage(s, "HALT\r", strlen("HALT\r"), &Length, NULL);
+		BOOL bErrorFlag = FALSE;
+		printf("About to tell stage to halt, but first pausing execution for 5 ms\n");
+		 _sleep(5);
+		bErrorFlag=SendCommandToStage(s, "HALT\r", strlen("HALT\r"), &Length, NULL);
+		if (FALSE == bErrorFlag){
+			printf("Failure: Unable to write to serial port.\n");
+		}
 		clearStageBuffer(s);
+		printf("Continuing to pause execution for 5 ms\n");
+		_sleep(5);
 		return 0;
 
 }
