@@ -54,6 +54,7 @@
 #include <cv.h>
 #include <cxcore.h>
 
+
 //Timer Libray
 #include "../3rdPartyLibs/tictoc.h"
 
@@ -90,9 +91,13 @@ Experiment* CreateExperimentStruct() {
 	/** Simulation? True/False **/
 	exp->SimDLP = 0;
 	exp->VidFromFile = 0;
+	
+	/** Fluorescence Mode **/
+	exp->FluorMode = 0;
 
 	/** GuiWindowNames **/
 	exp->WinDisp = NULL;
+	exp->WinDisp2 = NULL;
 	exp->WinCon1 = NULL;
 	exp->WinCon2 = NULL;
 	exp->WinCon3 = NULL;
@@ -230,6 +235,7 @@ void displayHelp() {
 	printf("\t-y\n\ty 384\t Target y position of worm for stage feedback loop. 0 is top.\n\n");
 	printf(
 			"\t-p  protocol.yml\n\t\tIlluminate according to a YAML protocol file.\n\n");
+	printf("\t-f\n\tOperate in fluorescence mode. Expects fluorescing blobs instead of darkfield image.. Disables worm shape tracking and disables DLP. Tracks centroid of brightest blob.\n\n");
 	printf("\t-?\n\t\tDisplay this help.\n\n");
 	printf("\nSee shortcutkeys.txt for a list of keyboard shortcuts.\n");
 }
@@ -245,7 +251,7 @@ int HandleCommandLineArguments(Experiment* exp) {
 	opterr = 0;
 
 	int c;
-	while ((c = getopt(exp->argc, exp->argv, "si:d:o:p:gtx:y:?")) != -1) {
+	while ((c = getopt(exp->argc, exp->argv, "si:d:o:p:fgtx:y:?")) != -1) {
 		switch (c) {
 		case 'i': /** specify input video file **/
 			exp->VidFromFile = 1;
@@ -316,7 +322,16 @@ int HandleCommandLineArguments(Experiment* exp) {
 				}
 				printf("Stage feedback target y= %d pixels.\n",exp->stageFeedbackTarget.y );
 		break;
+		
+		case 'f': /** fluorescence mode... expect fluorescence neurons, not darkfield image **/
+				exp->FluorMode=1;
+				exp->Params->FluorMode=1;
 
+				/** For now fluorescence mode will preclude the use of the DLP **/
+				exp->SimDLP=1;	
+				printf("Entering fluorescence mode...\n The software will now expect fluorescence images of neurons instead of darkfield images.\n");
+				printf("Also, disabling DLP functionality.\n");
+		break;
 
 		case '?':
 			if (optopt == '?') {
@@ -709,6 +724,7 @@ int HandleIlluminationTiming(Experiment* exp) {
 void AssignWindowNames(Experiment* exp) {
 
 	char* disp1 = (char*) malloc(strlen("Display"));
+	char* disp2 = (char*) malloc(strlen("Display2"));
 	char* control1 = (char*) malloc(strlen("Controls"));
 	char* control2 = (char*) malloc(strlen("MoreControls"));
 	char* control3 = (char*) malloc(strlen("EvenMoreControls"));
@@ -719,6 +735,7 @@ void AssignWindowNames(Experiment* exp) {
 	control3 = "EvenMoreControls";
 
 	exp->WinDisp = disp1;
+	exp->WinDisp2=disp2;
 	exp->WinCon1 = control1;
 	exp->WinCon2 = control2;
 	exp->WinCon3 = control3;
@@ -732,6 +749,8 @@ void AssignWindowNames(Experiment* exp) {
 void ReleaseWindowNames(Experiment* exp) {
 	if (exp->WinDisp != NULL)
 		free(exp->WinDisp);
+	if (exp->WinDisp2 != NULL)
+		free(exp->WinDisp2);
 	if (exp->WinCon1 != NULL)
 		free(exp->WinCon1);
 	if (exp->WinCon2 != NULL)
@@ -776,11 +795,16 @@ void SetupGUI(Experiment* exp) {
 	printf("Begining to setup GUI\n");
 
 	//	cvNamedWindow(exp->WinDisp); // <-- This goes into the thread.
-	cvNamedWindow("Display");
-
+	cvNamedWindow(exp->WinDisp);
+	cvNamedWindow(exp->WinDisp2);
 
 	cvNamedWindow(exp->WinCon1);
-	cvResizeWindow(exp->WinCon1, 500, 1000);
+	if (exp->FluorMode){
+		cvResizeWindow(exp->WinCon1, 500, 450);
+	} else {
+		cvResizeWindow(exp->WinCon1, 500, 1000);
+
+	}
 
 	cvNamedWindow("ProtoIllum");
 
@@ -794,8 +818,10 @@ void SetupGUI(Experiment* exp) {
 	cvCreateTrackbar("On", exp->WinCon1, &(exp->Params->OnOff), 1, (int) NULL);
 
 	/** Temporal Coding **/
-	cvCreateTrackbar("TemporalIQ", exp->WinCon1, &(exp->Params->TemporalOn), 1,
+	if (!(exp->FluorMode)){
+		cvCreateTrackbar("TemporalIQ", exp->WinCon1, &(exp->Params->TemporalOn), 1,
 			(int) NULL);
+	}
 
 	/** Segmentation Parameters**/
 	cvCreateTrackbar("Threshold", exp->WinCon1, &(exp->Params->BinThresh), 255,
@@ -806,37 +832,42 @@ void SetupGUI(Experiment* exp) {
 				15, (int) NULL);
 	cvCreateTrackbar("DilateErode", exp->WinCon1, &(exp->Params->DilateErode),
 					1, (int) NULL);
-	cvCreateTrackbar("ScalePx", exp->WinCon1, &(exp->Params->LengthScale), 50,
-			(int) NULL);
-	cvCreateTrackbar("Proximity", exp->WinCon1,
-			&(exp->Params->MaxLocationChange), 100, (int) NULL);
+					
+	if (!(exp->FluorMode)){				
+		cvCreateTrackbar("ScalePx", exp->WinCon1, &(exp->Params->LengthScale), 50,
+				(int) NULL);
+		cvCreateTrackbar("Proximity", exp->WinCon1,
+				&(exp->Params->MaxLocationChange), 100, (int) NULL);
+	}
 
 	/**Illumination Parameters **/
-	cvCreateTrackbar("x", exp->WinCon1, &(exp->Params->IllumSquareOrig.x),
-			exp->Params->DefaultGridSize.width, (int) NULL);
-	cvCreateTrackbar("y", exp->WinCon1, &(exp->Params->IllumSquareOrig.y),
-			exp->Params->DefaultGridSize.height, (int) NULL);
-	cvCreateTrackbar("xRad", exp->WinCon1,
-			&(exp->Params->IllumSquareRad.width), exp->Params->DefaultGridSize.width,
-			(int) NULL);
-	cvCreateTrackbar("yRad", exp->WinCon1,
-			&(exp->Params->IllumSquareRad.height), exp->Params->DefaultGridSize.height,
-			(int) NULL);
+	if (!(exp->FluorMode)){
+		cvCreateTrackbar("x", exp->WinCon1, &(exp->Params->IllumSquareOrig.x),
+				exp->Params->DefaultGridSize.width, (int) NULL);
+		cvCreateTrackbar("y", exp->WinCon1, &(exp->Params->IllumSquareOrig.y),
+				exp->Params->DefaultGridSize.height, (int) NULL);
+		cvCreateTrackbar("xRad", exp->WinCon1,
+				&(exp->Params->IllumSquareRad.width), exp->Params->DefaultGridSize.width,
+				(int) NULL);
+		cvCreateTrackbar("yRad", exp->WinCon1,
+				&(exp->Params->IllumSquareRad.height), exp->Params->DefaultGridSize.height,
+				(int) NULL);
 
-	cvCreateTrackbar("IllumDuration", exp->WinCon1,
-			&(exp->Params->IllumDuration), 70, (int) NULL);
-	cvCreateTrackbar("DLPFlashOn", exp->WinCon1,
-			&(exp->Params->DLPOnFlash), 1, (int) NULL);
+		cvCreateTrackbar("IllumDuration", exp->WinCon1,
+				&(exp->Params->IllumDuration), 70, (int) NULL);
+		cvCreateTrackbar("DLPFlashOn", exp->WinCon1,
+				&(exp->Params->DLPOnFlash), 1, (int) NULL);
 
-	cvCreateTrackbar("IllumSweepHT", exp->WinCon1,
-				&(exp->Params->IllumSweepHT), 1, (int) NULL);
+		cvCreateTrackbar("IllumSweepHT", exp->WinCon1,
+					&(exp->Params->IllumSweepHT), 1, (int) NULL);
 
-	cvCreateTrackbar("IllumSweepOn", exp->WinCon1,
-				&(exp->Params->IllumSweepOn), 1, (int) NULL);
+		cvCreateTrackbar("IllumSweepOn", exp->WinCon1,
+					&(exp->Params->IllumSweepOn), 1, (int) NULL);
 
 
-	cvCreateTrackbar("DLPOn", exp->WinCon1, &(exp->Params->DLPOn), 1,
-			(int) NULL);
+		cvCreateTrackbar("DLPOn", exp->WinCon1, &(exp->Params->DLPOn), 1,
+				(int) NULL);
+	}
 
 	/** Record Data **/
 	cvCreateTrackbar("RecordOn", exp->WinCon1, &(exp->Params->Record), 1,
@@ -844,46 +875,72 @@ void SetupGUI(Experiment* exp) {
 
 	/****** Setup Debug Control Panel ******/
 	cvNamedWindow(exp->WinCon2);
-	cvResizeWindow(exp->WinCon2, 450, 800);
-	cvCreateTrackbar("FloodLight", exp->WinCon2,
-			&(exp->Params->IllumFloodEverything), 1, (int) NULL);
+	
+	if (exp->FluorMode){
+		cvResizeWindow(exp->WinCon2, 450, 275);
+	}else{
+		cvResizeWindow(exp->WinCon2, 450, 800);
+	}
+	
+		if (!(exp->FluorMode)){
+		cvCreateTrackbar("FloodLight", exp->WinCon2,
+				&(exp->Params->IllumFloodEverything), 1, (int) NULL);
 
-	/** Levels **/
-	cvCreateTrackbar("Min",exp->WinCon2,&(exp->Params->LevelsMin),255, (int) NULL );
-	cvCreateTrackbar("Max",exp->WinCon2,&(exp->Params->LevelsMax),255, (int) NULL );
+		/** Levels **/
+		cvCreateTrackbar("Min",exp->WinCon2,&(exp->Params->LevelsMin),255, (int) NULL );
+		cvCreateTrackbar("Max",exp->WinCon2,&(exp->Params->LevelsMax),255, (int) NULL );
 
-	/** Setup Information about Curvature Analysis on the extra control panel **/
-	//Curvature analysis? Yes / No
-	cvCreateTrackbar("KAnalyzeOn", exp->WinCon2,
-			&(exp->Params->CurvatureAnalyzeOn), 1, (int) NULL);
+		/** Setup Information about Curvature Analysis on the extra control panel **/
+		//Curvature analysis? Yes / No
+		cvCreateTrackbar("KAnalyzeOn", exp->WinCon2,
+				&(exp->Params->CurvatureAnalyzeOn), 1, (int) NULL);
 
-	//Trigger based on the derivative of the mean curvature of the head? Yes/No
-	cvCreateTrackbar("KTriggerOn", exp->WinCon2,
-			&(exp->Params->CurvaturePhaseTriggerOn), 1, (int) NULL);
+		//Trigger based on the derivative of the mean curvature of the head? Yes/No
+		cvCreateTrackbar("KTriggerOn", exp->WinCon2,
+				&(exp->Params->CurvaturePhaseTriggerOn), 1, (int) NULL);
 
-	//How many number of frames do we go back in time to calculate the derivative?
-	cvCreateTrackbar("KNumFrames", exp->WinCon2,
-				&(exp->Params->CurvaturePhaseNumFrames), 50, (int) NULL);
+		//How many number of frames do we go back in time to calculate the derivative?
+		cvCreateTrackbar("KNumFrames", exp->WinCon2,
+					&(exp->Params->CurvaturePhaseNumFrames), 50, (int) NULL);
 
-	//Abs value threshold for mean curvature, greater than which we illuminate
-	cvCreateTrackbar("KThresh*10", exp->WinCon2,
-				&(exp->Params->CurvaturePhaseThreshold), 100, (int) NULL);
+		//Abs value threshold for mean curvature, greater than which we illuminate
+		cvCreateTrackbar("KThresh*10", exp->WinCon2,
+					&(exp->Params->CurvaturePhaseThreshold), 100, (int) NULL);
 
-	//Illuminate during sign of k positive or negative
-	cvCreateTrackbar("KThresh+/-", exp->WinCon2,
-				&(exp->Params->CurvaturePhaseThresholdPositive), 1, (int) NULL);
+		//Illuminate during sign of k positive or negative
+		cvCreateTrackbar("KThresh+/-", exp->WinCon2,
+					&(exp->Params->CurvaturePhaseThresholdPositive), 1, (int) NULL);
 
 
-	//Illuminate for positive or negative derivative of curvature (kdot >? 0)?
-	cvCreateTrackbar("KdotThresh+/-", exp->WinCon2,
-					&(exp->Params->CurvaturePhaseDerivThresholdPositive), 1, (int) NULL);
+		//Illuminate for positive or negative derivative of curvature (kdot >? 0)?
+		cvCreateTrackbar("KdotThresh+/-", exp->WinCon2,
+						&(exp->Params->CurvaturePhaseDerivThresholdPositive), 1, (int) NULL);
 
-	cvCreateTrackbar("IllumRefractPeriod", exp->WinCon2,
-			&(exp->Params->IllumRefractoryPeriod), 70, (int) NULL);
+		cvCreateTrackbar("IllumRefractPeriod", exp->WinCon2,
+				&(exp->Params->IllumRefractoryPeriod), 70, (int) NULL);
 
-	//Use the minimum DLP On and Refractory Period?
-	cvCreateTrackbar("StayOn&Refract", exp->WinCon2,
-					&(exp->Params->StayOnAndRefract), 1, (int) NULL);
+		//Use the minimum DLP On and Refractory Period?
+		cvCreateTrackbar("StayOn&Refract", exp->WinCon2,
+						&(exp->Params->StayOnAndRefract), 1, (int) NULL);
+		}
+	
+	/** Software Defined Circle Aperture **/
+	
+	/* Turn aperture on or off */
+	cvCreateTrackbar("ApertureOn", exp->WinCon2,
+					 &(exp->Params->ApertureOn), 1, (int) NULL);
+	
+	/* Set aperture X position */
+	cvCreateTrackbar("ApertureX", exp->WinCon2,
+					 &(exp->Params->ApertureX), exp->Worm->SizeOfImage.width , (int) NULL);
+					 
+ 	/* Set aperture X position */
+ 	cvCreateTrackbar("ApertureY", exp->WinCon2,
+ 					 &(exp->Params->ApertureY), exp->Worm->SizeOfImage.height , (int) NULL);
+					 				
+  	/* Set aperture X position */
+  	cvCreateTrackbar("ApertureR", exp->WinCon2,
+  					 &(exp->Params->ApertureR), exp->Worm->SizeOfImage.width / 2 , (int) NULL);
 
 
 
@@ -923,8 +980,10 @@ void SetupGUI(Experiment* exp) {
 		cvCreateTrackbar("StageSpeed",exp->WinCon1,&(exp->Params->stageSpeedFactor),300, (int) NULL);
 		/* Within the Activezone, the gain on the feedback is linear with distance, outside it is  flat */
 		cvCreateTrackbar("ActiveZone",exp->WinCon1,&(exp->Params->stageROIRadius),300, (int) NULL);
-		cvCreateTrackbar("TargetSeg",exp->WinCon1,&(exp->Params->stageTargetSegment),99, (int) NULL);
-
+		
+		if (!(exp->FluorMode)){
+			cvCreateTrackbar("TargetSeg",exp->WinCon1,&(exp->Params->stageTargetSegment),99, (int) NULL);
+		}
 
 		 /** Specifiy the target for trackign by double clicking on the image **/
 		 cvSetMouseCallback( "Display", on_mouse, (void*) exp);
@@ -1124,6 +1183,9 @@ void InitializeExperiment(Experiment* exp) {
 
 	exp->Worm = Worm;
 	exp->Params = Params;
+	if (exp->FluorMode)
+		exp->Params->FluorMode=1;
+
 
 	/** Setup Previous Worm **/
 	WormGeom* PrevWorm = CreateWormGeom();
@@ -1345,7 +1407,7 @@ int SetupRecording(Experiment* exp) {
 		HUDSFileName = CreateFileName(exp->dirname, exp->outfname, "_HUDS.avi");
 
 		exp->Vid = cvCreateVideoWriter(MovieFileName,
-				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX / 2, NSIZEY / 2),
+				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX , NSIZEY),
 				0);
 		exp->VidHUDS = cvCreateVideoWriter(HUDSFileName,
 				CV_FOURCC('M','J','P','G'), 30, cvSize(NSIZEX / 2, NSIZEY / 2),
@@ -1461,17 +1523,27 @@ void DoSegmentation(Experiment* exp) {
 	 *  Blob Detection
 	 *  etc
 	 */
+		
+		
+
+		
 	TICTOC::timer().tic("_FindWormBoundary",exp->e);
 	if (!(exp->e))
 		FindWormBoundary(exp->Worm, exp->Params);
 	TICTOC::timer().toc("_FindWormBoundary",exp->e);
 
+	/** If we are in fluorescence mode  **/
+	if (exp->FluorMode){
+		// We are done.. Nothing More to do..  
+		return; 
+	}	
+
 	/*** Find Worm Head and Tail ***/
-	if (!(exp->e))
+	if (!(exp->e) )
 		exp->e = GivenBoundaryFindWormHeadTail(exp->Worm, exp->Params);
 
 	/** If we are doing temporal analysis, improve the WormHeadTail estimate based on prev frame **/
-	if (exp->Params->TemporalOn && !(exp->e)){
+	if (exp->Params->TemporalOn && !(exp->e) ){
 		PrevFrameImproveWormHeadTail(exp->Worm, exp->Params, exp->PrevWorm);
 	}
 
@@ -1508,6 +1580,21 @@ void MarkRecenteringTarget(Experiment* exp){
 	CvPoint a=cvPoint( exp->stageFeedbackTarget.x +2, exp->stageFeedbackTarget.y +2);
 	CvPoint b=cvPoint(exp->stageFeedbackTarget.x -2, exp->stageFeedbackTarget.y -2);
 	cvRectangle(exp->HUDS,a,b, cvScalar(255,255,255),1);
+	
+	/*Also display tracker status */
+		/** Prepare Text **/
+	CvFont font;
+	cvInitFont(&font,CV_FONT_HERSHEY_TRIPLEX ,1.0,1.0,0,2,CV_AA);
+
+	
+	
+	/*** Let the user know if the illumination flood light is on ***/
+	if (exp->Params->stageTrackingOn){
+		cvPutText(exp->HUDS,"Tracking",cvPoint(20,130),&font,cvScalar(255,255,255));
+	} else {
+		cvPutText(exp->HUDS,"NOT Tracking!!",cvPoint(150,300),&font,cvScalar(255,255,255));
+	}
+	
 
 }
 
@@ -1577,6 +1664,7 @@ int HandleKeyStroke(int c, Experiment* exp) {
 		Toggle(&(exp->Params->DLPOn));
 		break;
 	case 'r': /** record **/
+	case 'R':
 		Toggle(&(exp->Params->Record));
 		break;
 	case 'f': /** turn on off flood light **/
@@ -1585,6 +1673,7 @@ int HandleKeyStroke(int c, Experiment* exp) {
 
 	/** on off **/
 	case 'o':
+	case 'O':
 		Toggle(&(exp->Params->OnOff));
 		break;
 	/** On-The Fly Illumination Origin **/
@@ -1770,12 +1859,9 @@ void DoWriteToDisk(Experiment* exp) {
 
 	/** Record VideoFrame to Disk**/
 	if (exp->RECORDVID && exp->Params->Record) {
-		TICTOC::timer().tic("cvResize");
-		cvResize(exp->Worm->ImgOrig, exp->SubSampled, CV_INTER_LINEAR);
-		TICTOC::timer().toc("cvResize");
-
+	
 		TICTOC::timer().tic("cvWriteFrame");
-		cvWriteFrame(exp->Vid, exp->SubSampled);
+		cvWriteFrame(exp->Vid, exp->Worm->ImgOrig);
 		if (exp->Vid==NULL ) printf("\tERROR in DoWriteToDisk!\n\texp->Vid is NULL\n");
 		if (exp->SubSampled ==NULL ) printf("\tERROR in DoWriteToDisk!\n\texp->exp->Subsampled==NULL\n");
 
@@ -1946,7 +2032,7 @@ CvPoint AdjustStageToKeepObjectAtTarget(HANDLE stage, CvPoint* obj,CvPoint targe
 	vel.y= CropNumber(-activeZoneRadius,activeZoneRadius, diff.y)*speed;
 
 	//printf("SpinStage: vel.x=%d, vel.y=%d\n",vel.x,vel.y);
-	spinStage(stage,vel.x,vel.y);
+	spinStage(stage,vel.y,vel.x); //swapped values here to accomodate weird camera angle relative to stage
 
 	return vel;
 
@@ -1986,7 +2072,14 @@ int ShutOffStage(Experiment* exp){
 int HandleStageTracker(Experiment* exp){
 	if (exp->stageIsPresent==1){ /** If the Stage is Present **/
 		if (exp->stage==NULL) return 0;
-
+		
+				/** If we are tracking but there is nothing to track, turn tracking off but only once **/	
+				if 	(exp->Worm->isPresent ==0 && exp->Params->stageTrackingOn==1){
+					exp->stageIsTurningOff=1;
+					exp->Params->stageTrackingOn=0;
+					printf("Shutting off tracking because  Worm is not present to track..\n");
+				}
+		
 		if (exp->Params->stageTrackingOn==1){
 			if (exp->Params->OnOff==0){ /** if the analysis system is off **/
 				/** Turn the stage off **/
@@ -1995,13 +2088,31 @@ int HandleStageTracker(Experiment* exp){
 				printf("Setting flags to turn stage off in HandleStageTracker()\n");
 			} else {
 			/** Move the stage to keep the worm centered in the field of view **/
-			printf(".");
-
-			/** Get the Point on the worm some distance along the centerline **/
-			CvPoint* PtOnWorm= (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
 			
-			/** Adjust the stage velocity to keep that point centered in the field of view **/
-			exp->Worm->stageVelocity=AdjustStageToKeepObjectAtTarget(exp->stage,PtOnWorm,exp->stageFeedbackTarget,exp->Params->stageSpeedFactor, exp->Params->stageROIRadius);
+
+			
+			/** Find The Point on the Worm To Center **/
+			CvPoint* PtOnWorm;
+			
+				if (exp->Params->FluorMode == 0){
+						
+					/** Get the Point on the worm some distance along the centerline **/
+					PtOnWorm = (CvPoint*) cvGetSeqElem(exp->Worm->Segmented->Centerline, exp->Params->stageTargetSegment);
+				
+				}else{
+						
+					/** Track based on the centroid of the binary image **/
+					PtOnWorm = (CvPoint*) exp->Worm->FluorFeatures->centroid;	
+				}
+
+				
+					/** Adjust the stage velocity to keep that point centered in the field of view **/
+					exp->Worm->stageVelocity=AdjustStageToKeepObjectAtTarget(exp->stage,PtOnWorm,exp->stageFeedbackTarget,exp->Params->stageSpeedFactor, exp->Params->stageROIRadius);
+
+					printf("."); // ANDY: Consider removing this if it takes time.. 
+				
+						
+				
 			}
 		}
 		if (exp->Params->stageTrackingOn==0){/** Tracking Should be off **/

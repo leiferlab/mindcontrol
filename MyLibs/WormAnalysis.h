@@ -47,6 +47,17 @@
  #error "#include AndysOpenCVLib.h" must appear in source files before "#include WormAnalysis.h"
 #endif
 
+#ifndef __OPENCV_HIGHGUI_H__
+ #error "Weird. Highgui H is also not defined!"
+#endif
+
+
+#ifndef __OPENCV_IMGPROC_IMGPROC_C_H__
+ #error "Doh! For some reason its not including  imgproc_c_h correctly!"
+#endif
+
+
+
 
 typedef struct WormAnalysisParamStruct{
 	/* WormAnalyisisParam is a structure containing inputs
@@ -83,6 +94,9 @@ typedef struct WormAnalysisParamStruct{
 	/** Defaul Wormspace GridSize for illumination **/
 	CvSize DefaultGridSize;
 
+	/** Fluorescence Imaging Properties **/
+	int FluorMode; //Are we in fluorescence mode.?
+	
 	/** Illumination Parameters **/
 	int IllumSegCenter; // Deprecated
 	int IllumSegRadius; // Deprecated
@@ -149,6 +163,13 @@ typedef struct WormAnalysisParamStruct{
 	int stageROIRadius;   // radius of the active zone
 	int stageTargetSegment; //segment along the worms centerline used for targeting
 
+	/** Software Aperture Field-Of-View **/
+	int ApertureOn; // by default, turn off the software aperture
+	int ApertureX; // x coordinate of center of circle
+	int ApertureY; // y coordinate of center of circle
+	int ApertureR; // radius of circle
+	
+
 	/** Record Data Parameters **/
 	int Record;
 
@@ -184,11 +205,26 @@ typedef struct WormTimeEvolutionStruct{
 }WormTimeEvolution;
 
 
+/* 
+ * Struct to hold the fluorescence centroid 
+ * and the moments of the blobs above threshold
+ * These are Fluorescent Features
+ * This is only used when the experiment is in Fluroescence Mode
+ *
+ */
+typedef struct WormFluorStruct{
+	CvPoint* centroid;
+	CvMoments* moments;
+}WormFluor;
+
 
 /** This is the image and the extracted data related to a worm at a single frame in time **/
 typedef struct WormImageAnalysisStruct{
 	CvSize SizeOfImage;
 
+	/** Is the Worm Present? **/
+	int isPresent;
+	
 	/** Frame Info **/
 	int frameNum;
 	int frameNumCamInternal;
@@ -210,6 +246,9 @@ typedef struct WormImageAnalysisStruct{
 	int HeadIndex;
 	CvSeq* Centerline;
 
+	/** Flluorescence Features **/
+	WormFluor* FluorFeatures;
+	
 	/** TimeStamp **/
 	unsigned long timestamp;
 
@@ -222,9 +261,9 @@ typedef struct WormImageAnalysisStruct{
 	/** Information about location on plate **/
 	CvPoint stageVelocity; //compensating velocity of stage.
 
-
 	//WormIlluminationData* Illum;
 }WormAnalysisData;
+
 
 
 
@@ -246,6 +285,7 @@ typedef struct WormGeomStruct{
 	CvPoint Tail;
 	int Perimeter;
 }WormGeom;
+
 
 
 /*
@@ -397,6 +437,23 @@ int DestroyWormTimeEvolution(WormTimeEvolution** TimeEvolution);
 
 int AddMeanHeadCurvature(WormTimeEvolution* TimeEvolution, double CurrHeadCurvature, WormAnalysisParam* AnalysisParam);
 
+
+
+
+
+/************************************************************/
+/* Creating and Destroying WormFluor Structure				*/
+/*  					 									*/
+/*															*/
+/************************************************************/
+
+/*
+ * Creates and allocates memory for a WormFluor Structure
+ * (which contains information about the worm when we are in fluorescence mode) 
+ */
+WormFluor* CreateWormFluor();
+
+int DestroyWormFluor(WormFluor* Fluor);
 
 
 

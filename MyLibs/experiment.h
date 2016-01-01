@@ -80,8 +80,13 @@ typedef struct ExperimentStruct{
 	int SimDLP; //1= simulate the DLP, 0= real DLP
 	int VidFromFile; // 1 =Video from File, 0=Video From Camera
 
+	/** Fluorescence Mode **/
+	int FluorMode; //0 == expect darkfield, 1== expect fluorescence image
+	
+	
 	/** GuiWindowNames **/
-	char* WinDisp ;
+	char* WinDisp;
+	char* WinDisp2;
 	char* WinCon1;
 	char* WinCon2;
 	char* WinCon3;
@@ -168,7 +173,7 @@ typedef struct ExperimentStruct{
 	int RECORDDATA;
 
 	/** Stage Control **/
-	int stageIsPresent;
+	int stageIsPresent;	
 	HANDLE stage; // Handle to USB stage object
 	CvPoint stageVel; //Current velocity of stage
 	CvPoint stageCenter; // Point indicating center of stage.

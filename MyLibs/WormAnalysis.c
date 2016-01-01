@@ -31,11 +31,12 @@
 
 
 //OpenCV Headers
+
 #include <cxcore.h>
-#include "opencv2/highgui/highgui_c.h"
-//#include "opencv/cv.h"
-//#include "opencv/cxcore.h"
 #include <cv.h>
+#include "opencv2/highgui/highgui_c.h"
+#include "opencv2/imgproc/imgproc_c.h"
+
 
 //Timer Lib
 #include "../3rdPartyLibs/tictoc.h"
@@ -61,7 +62,6 @@
 /************************************************************/
 /* Creating, Destroying and Memory for 						*/
 /*  WormAnalysisDataStruct 									*/
-/*															*/
 /************************************************************/
 
 
@@ -84,6 +84,7 @@ WormAnalysisData* CreateWormAnalysisDataStruct(){
 
 
 	/*** Set Everythingm To NULL ***/
+	WormPtr->isPresent=0;
 	WormPtr->Head=NULL;
 	WormPtr->Tail=NULL;
 	WormPtr->HeadIndex=0;
@@ -108,7 +109,7 @@ WormAnalysisData* CreateWormAnalysisDataStruct(){
 	WormPtr->Boundary=cvCreateSeq(CV_SEQ_ELTYPE_POINT,sizeof(CvSeq),sizeof(CvPoint),WormPtr->MemStorage);
 	WormPtr->Centerline=cvCreateSeq(CV_SEQ_ELTYPE_POINT,sizeof(CvSeq),sizeof(CvPoint),WormPtr->MemStorage);
 
-
+	WormPtr->FluorFeatures = CreateWormFluor();	
 
 	/*** Create Segmented Worm Object ***/
 	WormPtr->Segmented= CreateSegmentedWormStruct();
@@ -137,6 +138,7 @@ void DestroyWormAnalysisDataStruct(WormAnalysisData* Worm){
 	cvReleaseMemStorage(&((Worm)->MemScratchStorage));
 	cvReleaseMemStorage(&((Worm)->MemStorage));
 	free((Worm)->Segmented);
+	free( Worm->FluorFeatures);
 	DestroyWormTimeEvolution(&(Worm->TimeEvolution));
 	free(Worm);
 	Worm=NULL;
@@ -268,6 +270,9 @@ WormAnalysisParam* CreateWormAnalysisParam(){
 
 	/** Default WormSpace GridSize **/
 	ParamPtr->DefaultGridSize=cvSize(20,ParamPtr->NumSegments);
+	
+	/** Fluorescence Mode **/
+	ParamPtr->FluorMode=0;
 
 	/** Frame-to-Frame Temporal Analysis Parameters **/
 	ParamPtr->TemporalOn=1;
@@ -342,6 +347,13 @@ WormAnalysisParam* CreateWormAnalysisParam(){
 	ParamPtr->stageSpeedFactor=25;
 	ParamPtr->stageROIRadius=250;
 	ParamPtr->stageTargetSegment=10;
+	
+	/** Software Aperture Field-Of-View **/
+	ParamPtr->ApertureOn=0; // by default, turn off the software aperture
+	ParamPtr->ApertureX=1024/2; // x coordinate of center of circle
+	ParamPtr->ApertureY=768/2; // y coordinate of center of circle
+	ParamPtr->ApertureR=768/2; // radius of circle
+	
 
 	/**Record Parameters **/
 	ParamPtr->Record=0;
@@ -517,6 +529,36 @@ int AddMeanHeadCurvature(WormTimeEvolution* TimeEvolution, double CurrHeadCurvat
 
 
 
+/************************************************************/
+/* Creating and Destroying WormFluor Structure				*/
+/*  					 									*/
+/*															*/
+/************************************************************/
+
+/*
+ * Creates and allocates memory for a WormFluor Structure
+ * (which contains information about the worm when we are in fluorescence mode) 
+ */
+WormFluor* CreateWormFluor(){
+	WormFluor* Fluor;
+	Fluor= (WormFluor*) malloc(sizeof(WormFluor));
+
+	Fluor->centroid=(CvPoint*) malloc (sizeof(CvPoint));
+	Fluor->moments =(CvMoments*) malloc(sizeof(CvMoments));
+		
+	return Fluor;
+}
+
+int DestroyWormFluor(WormFluor* Fluor){
+	free((Fluor->centroid));
+	free((Fluor->moments));
+	free(Fluor);
+	Fluor=NULL;
+}
+
+
+
+
 
 /************************************************************/
 /* Higher Level Routines									*/
@@ -538,16 +580,45 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	/** This function currently takes around 5-7 ms **/
 	/**
 	 * Before I forget.. plan to make this faster by:
-	 *  a) using region of interest
+	 *  a) using region of interest... DONE!
 	 *  b) decimating to make it smaller (maybe?)
 	 *  c) resize
 	 *  d) not using CV_GAUSSIAN for smoothing
 	 */
+	
+
+	/** Crop the Image based on the user defined aperture **/
+	IplImage* OrigCropped=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
+	
+	if (Params->ApertureOn) {
+		
+		/** draw a filled in circle for a mask **/
+		IplImage* CircleROI=cvCreateImage(cvGetSize(Worm->ImgOrig),IPL_DEPTH_8U,1);
+		cvZero(CircleROI);
+		cvCircle(CircleROI,cvPoint(Params->ApertureX,Params->ApertureY),Params->ApertureR,cvScalar(255,255,255),-1,CV_AA,0);		
+		
+		/** do a bitwise AND **/
+		cvAnd(CircleROI, Worm->ImgOrig, OrigCropped);
+	
+		/** The Circle Mask is no longer necessary **/
+		cvReleaseImage(&CircleROI);
+	} else {  
+		/* If no cropping is necessary, just copy over the original */
+		cvCopy(Worm->ImgOrig,OrigCropped);
+	}
+
+
 
 	/** Smooth the Image **/
 	TICTOC::timer().tic("cvSmooth");
-	cvSmooth(Worm->ImgOrig,Worm->ImgSmooth,CV_GAUSSIAN,Params->GaussSize*2+1);
+	cvSmooth(OrigCropped,Worm->ImgSmooth,CV_GAUSSIAN,Params->GaussSize*2+1);
 	TICTOC::timer().toc("cvSmooth");
+	
+	/**The cropped original is no longer needed */
+	cvReleaseImage(&OrigCropped);
+	
+
+
 
 	/** Dilate and Erode **/
 //	cvDilate(Worm->ImgSmooth, Worm->ImgSmooth,NULL,3);
@@ -559,6 +630,21 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 	cvThreshold(Worm->ImgSmooth,Worm->ImgThresh,Params->BinThresh,255,CV_THRESH_BINARY );
 	TICTOC::timer().toc("cvThreshold");
 
+	/** Check to see if there are any pixels above threshold **/
+	CvScalar pixelsum;
+	pixelsum=cvSum(Worm->ImgThresh);
+	if (pixelsum.val[0]==0){
+	
+			if (Worm->isPresent==1){
+				printf("Lost the worm!\nFailed to find any fluorescence. Maybe the threshold is too high? \n");
+			}
+			Worm->isPresent=0;
+			return ;
+	} else {
+		Worm->isPresent=1;
+	}
+		
+	
 
 	/** Dilate and Erode **/
 	if (Params->DilateErode==1){
@@ -567,6 +653,11 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 		cvErode(Worm->ImgThresh, Worm->ImgThresh,NULL,2);
 		TICTOC::timer().toc("DilateAndErode");
 	}
+	
+	
+
+	
+	
 
 
 	/** Find Contours **/
@@ -595,7 +686,30 @@ void FindWormBoundary(WormAnalysisData* Worm, WormAnalysisParam* Params){
 		Worm->Boundary=cvCloneSeq(rough);
 	}
 
+	/** If we are in fluorescence mode  **/
+	/** Note a few line from this code block are from Quan Wen **/
+	if (Params->FluorMode){ 
+		
 
+		if (Worm->FluorFeatures->moments==NULL){
+			printf("ERROR! Memory has not been allocated for the moments of the blob in FluorFeatures!\n");
+			return;
+		}
+
+		/** Find the moment of the largest contour, which should be our blob **/
+		TICTOC::timer().tic("cvMoments");
+        cvMoments(Worm->Boundary,Worm->FluorFeatures->moments,1);
+    	TICTOC::timer().toc("cvMoments");
+		
+		
+		if (Worm->FluorFeatures->centroid != NULL) {
+			/** Calculate the centroid by performing this calculation on the moments **/
+			*(Worm->FluorFeatures->centroid)=cvPoint(Worm->FluorFeatures->moments->m10/Worm->FluorFeatures->moments->m00,Worm->FluorFeatures->moments->m01/Worm->FluorFeatures->moments->m00);
+		} else {
+			printf("ERROR! Memory has not been allocated for the centroid point in FluorFeatures!\n");
+		}
+			
+	}
 
 }
 
@@ -1079,42 +1193,42 @@ int SegmentWorm(WormAnalysisData* Worm, WormAnalysisParam* Params){
  */
 int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisParam* Params, Frame* IlluminationFrame){
 
+	
 	int CircleDiameterSize=10;
+	
+	if (!(Params->FluorMode)){
+		
+		/** Overly a translucent image of the illumination pattern**/
+		double weighting=0.20; //Alpha blend weighting
+		if (Params->DLPOn) weighting=0.45; // if DLP is on make the illumination pattern more opaque
+		cvAddWeighted(Worm->ImgOrig,1,IlluminationFrame->iplimg,weighting,0,TempImage);
 
-	/** Overly a translucent image of the illumination pattern**/
+		DrawSequence(&TempImage,Worm->Boundary);
 
-	double weighting=0.20; //Alpha blend weighting
-	if (Params->DLPOn) weighting=0.45; // if DLP is on make the illumination pattern more opaque
-	cvAddWeighted(Worm->ImgOrig,1,IlluminationFrame->iplimg,weighting,0,TempImage);
-
-	//Want to also display boundary!
-	//cvDrawContours(TempImage, Worm->Boundary, cvScalar(255,0,0),cvScalar(0,255,0),100);
-
-	DrawSequence(&TempImage,Worm->Boundary);
-
-//	DrawSequence(&TempImage,Worm->Segmented->LeftBound);
-//	DrawSequence(&TempImage,Worm->Segmented->RightBound);
-
-	cvCircle(TempImage,*(Worm->Tail),CircleDiameterSize,cvScalar(255,255,255),1,CV_AA,0);
-	cvCircle(TempImage,*(Worm->Head),CircleDiameterSize/2,cvScalar(255,255,255),1,CV_AA,0);
+		cvCircle(TempImage,*(Worm->Tail),CircleDiameterSize,cvScalar(255,255,255),1,CV_AA,0);
+		cvCircle(TempImage,*(Worm->Head),CircleDiameterSize/2,cvScalar(255,255,255),1,CV_AA,0);
+	
+	} else {
+		cvCopy(Worm->ImgOrig,TempImage);
+		/** Draw A Circle on the centroid of the fluorescent blob **/ 
+		if (Worm->FluorFeatures!=NULL && Worm->isPresent==1) {
+				cvCircle(TempImage,*(Worm->FluorFeatures->centroid),CircleDiameterSize*2,cvScalar(255,255,255),1,CV_AA,0);
+		} else {
+			//printf("No centroid found to draw!\n");
+		}
+	}
 
 	/** Prepare Text **/
 	CvFont font;
 	cvInitFont(&font,CV_FONT_HERSHEY_TRIPLEX ,1.0,1.0,0,2,CV_AA);
 
+
 	/** Display DLP On Off **/
 	if (Params->DLPOn) {
 		cvPutText(TempImage,"DLP ON",cvPoint(20,70),&font,cvScalar(255,255,255));
 	}
-	/** Display Recording if we are recording **/
-	if (Params->Record){
-		cvPutText(TempImage,"Recording",cvPoint(20,100),&font,cvScalar(255,255,255));
-
-	} else {
-		if (Params->DLPOn) cvPutText(TempImage,"Did you forget to record?",cvPoint(20,100),&font,cvScalar(255,255,255));
-	}
-
-
+	
+	
 	/*** Let the user know if the illumination flood light is on ***/
 	if (Params->IllumFloodEverything){
 		cvPutText(TempImage,"Floodlight",cvPoint(20,130),&font,cvScalar(255,255,255));
@@ -1128,10 +1242,27 @@ int CreateWormHUDS(IplImage* TempImage, WormAnalysisData* Worm, WormAnalysisPara
 
 	}
 
+	/** Display Recording if we are recording **/
+	if (Params->Record){
+		cvPutText(TempImage,"Recording",cvPoint(20,100),&font,cvScalar(255,255,255));
+
+	} else {
+		if (Params->DLPOn) cvPutText(TempImage,"Did you forget to record?",cvPoint(20,100),&font,cvScalar(255,255,255));
+	}
+	
+
 	char frame[30]; // these are freed automatically 
 					// SEE http://stackoverflow.com/questions/1335230/is-the-memory-of-a-character-array-freed-by-going-out-of-scope
 	sprintf(frame,"%d",Worm->frameNum);
 	cvPutText(TempImage,frame,cvPoint(Worm->SizeOfImage.width- 200,Worm->SizeOfImage.height - 10),&font,cvScalar(255,255,255) );
+		
+	/** Display the Field of View Circle indicator **/
+	if (Params->ApertureOn){ 
+		/* If we are restricing the field of view in software... */
+		/* Draw the circle as a white line  */
+		cvCircle(TempImage,cvPoint(Params->ApertureX,Params->ApertureY),Params->ApertureR,cvScalar(255,255,255),1,CV_AA,0);
+		}
+	
 	return 0;
 }
 
